@@ -1,0 +1,37 @@
+{
+  "name": "tezos-testnet-faucet-backend",
+  "version": "0.0.1",
+  "description": "",
+  "main": "dist/api.js",
+  "scripts": {
+    "build": "npx tsc",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "serve": "nodemon dist/api.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/avysel/tezos-testnet-faucet-backend.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/avysel/tezos-testnet-faucet-backend/issues"
+  },
+  "homepage": "https://github.com/avysel/tezos-testnet-faucet-backend#readme",
+  "dependencies": {
+    "@netlify/functions": "^1.0.0",
+    "@taquito/signer": "^12.1.1",
+    "@taquito/taquito": "^12.1.1",
+    "axios": "^0.26.1",
+    "body-parser": "^1.20.0",
+    "dotenv": "^16.0.1",
+    "express": "^4.18.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.12",
+    "@types/express": "^4.17.13",
+    "@types/node": "^17.0.36",
+    "nodemon": "^2.0.16",
+    "typescript": "^4.7.2"
+  }
+}
