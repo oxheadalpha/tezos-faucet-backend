@@ -1,24 +1,5 @@
 # Tezos testnet faucet API
 
-## Config
-
-Set environment variables:
-
-- `FAUCET_PRIVATE_KEY`: Private key of the faucet, to sign transaction (mandatory)
-- `FAUCET_ADDRESS`: faucet address (mandatory)
-- `ENABLE_CAPTCHA`: true to enable ReCAPTCHA, false otherwise (default: true)
-- `FAUCET_CAPTCHA_SECRET`: Faucet ReCAPTCHA secret key (mandatory if ENABLE_CAPTCHA=true)
-- `AUTHORIZED_HOST`: authorized host, for CORS (default: *).
-- `API_PORT`: API listening port (default: 3000)
-- `RPC_URL`: Tezos client RPC URL (mandatory)
-- `FAUCET_AMOUNT_USER`: number of XTZ to send for a regular request (default: 1)
-- `FAUCET_AMOUNT_BAKER`: number of XTZ to send for a baker request (default: 6000)
-- `MAX_BALANCE`: maximum balance to request XTZ (default: 6000)
-
-## Security
-
-Activate domain verification in ReCAPTCHA parameters.
-
 ## Deploy
 
 ### Build
@@ -32,6 +13,30 @@ docker build . -t tezos-testnet-faucet-api
 ```
 docker run -p 3000:3000 tezos-testnet-faucet-api
 ```
+
+## Config
+
+Set environment variables
+
+Mandatory:
+
+- `FAUCET_PRIVATE_KEY`: private key of the faucet, to sign transaction
+- `FAUCET_ADDRESS`: faucet address
+- `FAUCET_CAPTCHA_SECRET`: faucet ReCAPTCHA secret key (mandatory if ENABLE_CAPTCHA=true)
+- `RPC_URL`: Tezos node RPC URL to connect to
+
+Optional:
+
+- `ENABLE_CAPTCHA`: true to enable ReCAPTCHA, false otherwise (default: true)
+- `AUTHORIZED_HOST`: authorized host, for CORS (default: *).
+- `API_PORT`: API listening port (default: 3000)
+- `FAUCET_AMOUNT_USER`: number of XTZ to send for a regular request (default: 1)
+- `FAUCET_AMOUNT_BAKER`: number of XTZ to send for a baker request (default: 6000)
+- `MAX_BALANCE`: maximum user balance beyond which sending of XTZ is refused (default: 6000)
+
+## Security
+
+Activate domain verification in ReCAPTCHA parameters to allow only calls from the Front faucet.
 
 ## Use
 
