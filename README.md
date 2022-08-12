@@ -1,5 +1,14 @@
 # Tezos testnet faucet API
 
+## Overview
+
+Backend for Tezos faucet front app: https://github.com/avysel/tezos-faucet.
+
+## Prerequisite
+
+Create a ReCaptcha project (shared with faucet front app).
+
+
 ## Local run for development
 
 Compile Typescript sources to `/dist` directory:
