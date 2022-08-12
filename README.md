@@ -1,17 +1,30 @@
 # Tezos testnet faucet API
 
+## Local run for development
+
+Compile Typescript sources to `/dist` directory:
+
+```
+npm run build
+```
+
+Run API with `nodemon`:
+```
+npm run serve
+```
+
 ## Deploy
 
 ### Build
 
 ```
-docker build . -t tezos-testnet-faucet-api
+docker build . -t tezos-faucet-backend
 ```
 
 ### Run
 
 ```
-docker run -p 3000:3000 tezos-testnet-faucet-api
+docker run -p 3000:3000 tezos-faucet-backend
 ```
 
 ## Config

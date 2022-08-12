@@ -10,4 +10,4 @@ COPY . .
 
 RUN ./node_modules/typescript/bin/tsc -p ./tsconfig.json
 
-CMD ["node", "./api/dist/index.js"]
+CMD ["node", "./dist/api.js"]
