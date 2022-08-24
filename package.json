@@ -10,14 +10,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/avysel/tezos-testnet-faucet-backend.git"
+    "url": "git+https://github.com/oxheadalpha/tezos-testnet-faucet-backend.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/avysel/tezos-testnet-faucet-backend/issues"
+    "url": "https://github.com/oxheadalpha/tezos-testnet-faucet-backend/issues"
   },
-  "homepage": "https://github.com/avysel/tezos-testnet-faucet-backend#readme",
+  "homepage": "https://github.com/oxheadalpha/tezos-testnet-faucet-backend#readme",
   "dependencies": {
     "@netlify/functions": "^1.0.0",
     "@taquito/signer": "^12.1.1",

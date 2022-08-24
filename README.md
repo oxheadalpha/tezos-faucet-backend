@@ -2,7 +2,7 @@
 
 ## Overview
 
-Backend for Tezos faucet front app: https://github.com/avysel/tezos-faucet.
+Backend for Tezos faucet front app: https://github.com/oxheadalpha/tezos-faucet.
 
 ## Prerequisite
 
