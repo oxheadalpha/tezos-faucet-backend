@@ -21,7 +21,8 @@ const send = async (amount: number, address: string): Promise<string> => {
     // Check max balance
     const userBalance: number = (await Tezos.tz.getBalance(address)).toNumber();
 
-    if (userBalance > defaultMaxBalance * 1000000) {
+    const maxBalance: number = process.env.MAX_BALANCE || defaultMaxBalance;
+    if (userBalance > maxBalance * 1000000) {
         console.log(`User balance too high (${userBalance / 1000000}), don't send`);
         throw new Error("You have already enough ꜩ");
     }
