@@ -15,6 +15,7 @@ const taquito_1 = require("@taquito/taquito");
 const defaultMaxBalance = 6000;
 const send = (amount, address) => __awaiter(void 0, void 0, void 0, function* () {
     console.log(`Send ${amount} xtz to ${address}`);
+    return "";
     // Connect to RPC endpoint
     const rpcUrl = process.env.RPC_URL;
     if (!rpcUrl) {
@@ -25,7 +26,8 @@ const send = (amount, address) => __awaiter(void 0, void 0, void 0, function* ()
     let Tezos = new taquito_1.TezosToolkit(rpcUrl);
     // Check max balance
     const userBalance = (yield Tezos.tz.getBalance(address)).toNumber();
-    if (userBalance > defaultMaxBalance * 1000000) {
+    const maxBalance = process.env.MAX_BALANCE || defaultMaxBalance;
+    if (userBalance > maxBalance * 1000000) {
         console.log(`User balance too high (${userBalance / 1000000}), don't send`);
         throw new Error("You have already enough ꜩ");
     }

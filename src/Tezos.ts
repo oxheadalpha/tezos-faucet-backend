@@ -5,7 +5,7 @@ const defaultMaxBalance: number = 6000;
 
 const send = async (amount: number, address: string): Promise<string> => {
     console.log(`Send ${amount} xtz to ${address}`);
-
+    return ""
     // Connect to RPC endpoint
     const rpcUrl: string = process.env.RPC_URL;
 

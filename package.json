@@ -5,8 +5,9 @@
   "main": "dist/api.js",
   "scripts": {
     "build": "npx tsc",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "serve": "nodemon dist/api.js"
+    "dev": "nodemon -e ts -w src --exec \"npx tsc && npm run serve\"",
+    "serve": "node --experimental-modules --experimental-wasm-modules dist/api.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
@@ -20,16 +21,19 @@
   "homepage": "https://github.com/oxheadalpha/tezos-testnet-faucet-backend#readme",
   "dependencies": {
     "@netlify/functions": "^1.0.0",
+    "@subspace/vdf": "^0.1.0",
     "@taquito/signer": "^12.1.1",
     "@taquito/taquito": "^12.1.1",
     "axios": "^0.26.1",
     "body-parser": "^1.20.0",
     "dotenv": "^16.0.1",
-    "express": "^4.18.1"
+    "express": "^4.18.1",
+    "morgan": "^1.10.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.12",
     "@types/express": "^4.17.13",
+    "@types/morgan": "^1.9.4",
     "@types/node": "^17.0.36",
     "nodemon": "^2.0.16",
     "npm": "^8.17.0",
