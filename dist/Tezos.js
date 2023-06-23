@@ -9,13 +9,30 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.send = void 0;
+exports.send = exports.getTezAmountForProfile = void 0;
 const signer_1 = require("@taquito/signer");
 const taquito_1 = require("@taquito/taquito");
+const Types_1 = require("./Types");
 const defaultMaxBalance = 6000;
+const defaultUserAmount = 1;
+const defaultBakerAmount = 6000;
+const getTezAmountForProfile = (profile) => {
+    let amount = 0;
+    switch (profile) {
+        case Types_1.Profile.USER:
+            amount = process.env.FAUCET_AMOUNT_USER || defaultUserAmount;
+            break;
+        case Types_1.Profile.BAKER:
+            amount = process.env.FAUCET_AMOUNT_BAKER || defaultBakerAmount;
+            break;
+        default:
+            throw new Error(`Unknown profile ${profile}`);
+    }
+    return amount;
+};
+exports.getTezAmountForProfile = getTezAmountForProfile;
 const send = (amount, address) => __awaiter(void 0, void 0, void 0, function* () {
     console.log(`Send ${amount} xtz to ${address}`);
-    return "";
     // Connect to RPC endpoint
     const rpcUrl = process.env.RPC_URL;
     if (!rpcUrl) {
@@ -39,7 +56,9 @@ const send = (amount, address) => __awaiter(void 0, void 0, void 0, function* ()
     }
     // Create signer
     try {
-        Tezos.setProvider({ signer: yield signer_1.InMemorySigner.fromSecretKey(privateKey) });
+        Tezos.setProvider({
+            signer: yield signer_1.InMemorySigner.fromSecretKey(privateKey),
+        });
     }
     catch (err) {
         console.log(err);
@@ -47,7 +66,10 @@ const send = (amount, address) => __awaiter(void 0, void 0, void 0, function* ()
     }
     // Create and send transaction
     try {
-        const operation = yield Tezos.contract.transfer({ to: address, amount: amount });
+        const operation = yield Tezos.contract.transfer({
+            to: address,
+            amount: amount,
+        });
         console.log(`Hash: ${operation.hash}`);
         return operation.hash;
     }

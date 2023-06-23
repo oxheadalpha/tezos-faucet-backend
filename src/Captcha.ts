@@ -1,22 +1,21 @@
-import axios from 'axios';
+import axios from "axios"
 
-const checkCaptcha = async (responseToken: string) => {
+export const checkCaptcha = async (responseToken: string) => {
+  if (!responseToken) {
+    throw new Error("Missing captcha token.")
+  }
 
-    const enableCaptcha: string = process.env.ENABLE_CAPTCHA || "true";
+  const enableCaptcha: string = process.env.ENABLE_CAPTCHA || "true"
 
-    if (enableCaptcha === "false") {
-        console.log("Captcha disabled");
-        return true;
-    }
+  if (enableCaptcha === "false") {
+    console.log("Captcha disabled")
+    return true
+  }
 
-    const secret = process.env.FAUCET_CAPTCHA_SECRET;
-    const captchaURL = `https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${responseToken}`;
+  const secret = process.env.FAUCET_CAPTCHA_SECRET
 
-    const res = await axios.post(captchaURL);
-    console.log(res.data);
+  const captchaURL = `https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${responseToken}`
 
-    return res.data.success;
-};
-
-
-export { checkCaptcha };
+  const res = await axios.post(captchaURL)
+  return res.data.success
+}

@@ -1,60 +1,82 @@
-import { InMemorySigner } from "@taquito/signer";
-import { TezosToolkit } from "@taquito/taquito";
+import { InMemorySigner } from "@taquito/signer"
+import { TezosToolkit } from "@taquito/taquito"
+import { Profile } from "./Types"
 
-const defaultMaxBalance: number = 6000;
+const defaultMaxBalance: number = 6000
+const defaultUserAmount: number = 1
+const defaultBakerAmount: number = 6000
 
-const send = async (amount: number, address: string): Promise<string> => {
-    console.log(`Send ${amount} xtz to ${address}`);
-    return ""
-    // Connect to RPC endpoint
-    const rpcUrl: string = process.env.RPC_URL;
+export const getTezAmountForProfile = (profile: Profile) => {
+  let amount: number = 0
 
-    if (!rpcUrl) {
-        console.log("No RPC URL defined");
-        throw new Error("API error");
-    }
+  switch (profile) {
+    case Profile.USER:
+      amount = process.env.FAUCET_AMOUNT_USER || defaultUserAmount
+      break
+    case Profile.BAKER:
+      amount = process.env.FAUCET_AMOUNT_BAKER || defaultBakerAmount
+      break
+    default:
+      throw new Error(`Unknown profile ${profile}`)
+  }
 
-    console.log(`Use ${rpcUrl}`);
+  return amount
+}
 
-    let Tezos: TezosToolkit = new TezosToolkit(rpcUrl);
+export const send = async (
+  amount: number,
+  address: string
+): Promise<string> => {
+  console.log(`Send ${amount} xtz to ${address}`)
+  // Connect to RPC endpoint
+  const rpcUrl: string = process.env.RPC_URL
 
-    // Check max balance
-    const userBalance: number = (await Tezos.tz.getBalance(address)).toNumber();
+  if (!rpcUrl) {
+    console.log("No RPC URL defined")
+    throw new Error("API error")
+  }
 
-    const maxBalance: number = process.env.MAX_BALANCE || defaultMaxBalance;
-    if (userBalance > maxBalance * 1000000) {
-        console.log(`User balance too high (${userBalance / 1000000}), don't send`);
-        throw new Error("You have already enough ꜩ");
-    }
+  console.log(`Use ${rpcUrl}`)
 
-    // Build memory signer fro private key
-    const privateKey: string = process.env.FAUCET_PRIVATE_KEY;
+  let Tezos: TezosToolkit = new TezosToolkit(rpcUrl)
 
-    if (!privateKey) {
-        console.log("No private key provided");
-        throw new Error("API error");
-    }
+  // Check max balance
+  const userBalance: number = (await Tezos.tz.getBalance(address)).toNumber()
 
-    // Create signer
-    try {
-        Tezos.setProvider({ signer: await InMemorySigner.fromSecretKey(privateKey) });
-    }
-    catch (err) {
-        console.log(err);
-        throw new Error("API error");
-    }
+  const maxBalance: number = process.env.MAX_BALANCE || defaultMaxBalance
+  if (userBalance > maxBalance * 1000000) {
+    console.log(`User balance too high (${userBalance / 1000000}), don't send`)
+    throw new Error("You have already enough ꜩ")
+  }
 
-    // Create and send transaction
-    try {
-        const operation = await Tezos.contract.transfer({ to: address, amount: amount });
-        console.log(`Hash: ${operation.hash}`);
-        return operation.hash;
-    }
-    catch (err) {
-        console.log(err);
-        throw err;
-    }
+  // Build memory signer fro private key
+  const privateKey: string = process.env.FAUCET_PRIVATE_KEY
 
-};
+  if (!privateKey) {
+    console.log("No private key provided")
+    throw new Error("API error")
+  }
 
-export { send };
+  // Create signer
+  try {
+    Tezos.setProvider({
+      signer: await InMemorySigner.fromSecretKey(privateKey),
+    })
+  } catch (err) {
+    console.log(err)
+    throw new Error("API error")
+  }
+
+  // Create and send transaction
+  try {
+    const operation = await Tezos.contract.transfer({
+      to: address,
+      amount: amount,
+    })
+    console.log(`Hash: ${operation.hash}`)
+    return operation.hash
+  } catch (err) {
+    console.log(err)
+    throw err
+  }
+}

@@ -2,15 +2,18 @@ import express, { Express, Request, Response } from "express"
 import bodyParser from "body-parser"
 import morgan from "morgan"
 import dotenv from "dotenv"
-import createVdf from "@subspace/vdf"
+import crypto from "crypto"
+import { createClient } from "redis"
 
 import { Profile, RequestBody, ResponseBody, InfoResponseBody } from "./Types"
 import { checkCaptcha } from "./Captcha"
-import { send } from "./Tezos"
-import { randomBytes } from "crypto"
-import { log } from "console"
+import { getTezAmountForProfile } from "./Tezos"
 
 dotenv.config()
+const redisClient = createClient({
+  // url: "redis://localhost:6379",
+}) // reject
+redisClient.on("error", (err) => console.log("Redis Client Error", err))
 
 const defaultPort: number = 3000
 const defaultUserAmount: number = 1
@@ -33,183 +36,131 @@ app.use((req: Request, res: Response, next) => {
   next()
 })
 
-// createVdf().then((vdfInstance: any) => {
-//   const iterations = 3
-//   const challenge = Buffer.from("aa", "hex")
-//   const intSizeBits = 2048
-//   // const intSizeBits = 100;
-//   const isPietrzak = false
-//   const res = vdfInstance.generate(
-//     iterations,
-//     challenge,
-//     intSizeBits,
-//     isPietrzak
-//   )
-//   // console.log(res)
-//   console.log(Buffer.from(res).toString("hex"))
-//   console.log(vdfInstance.verify(3, challenge, res, intSizeBits, isPietrzak))
-// })
-
-
 app.get("/info", (_, res: Response) => {
   console.log("Get info")
-
-  let profiles: any = {
-    user: {
-      profile: Profile.USER,
-      amount: process.env.FAUCET_AMOUNT_USER || defaultUserAmount,
-      currency: "tez",
-    },
-    baker: {
-      profile: Profile.BAKER,
-      amount: process.env.FAUCET_AMOUNT_BAKER || defaultBakerAmount,
-      currency: "tez",
-    },
-  }
-
-  let info: InfoResponseBody = {
-    faucetAddress: process.env.FAUCET_ADDRESS,
-    captchaEnable: JSON.parse(process.env.ENABLE_CAPTCHA),
-    profiles: profiles,
-    maxBalance: process.env.MAX_BALANCE,
-  }
-
-  res.status(200)
-  res.send(info)
-})
-
-app.post("/send", async (req: Request, res: Response) => {
-  const body: RequestBody = req.body
-
-  const { captchaToken, address, profile } = body
-
-  const responseBody: any = {
-    status: "",
-    message: undefined,
-    txHash: undefined,
-    vdfChallenge: "",
-  }
-
-  let amount: number = 0
-
-  switch (profile) {
-    case Profile.USER:
-      amount = process.env.FAUCET_AMOUNT_USER || defaultUserAmount
-      break
-    case Profile.BAKER:
-      amount = process.env.FAUCET_AMOUNT_BAKER || defaultBakerAmount
-      break
-    default:
-      console.log(`Unknown profile ${profile}`)
-      responseBody.status = "ERROR"
-      responseBody.message = `Unknown profile`
-      res.status(400)
-      res.send(responseBody)
-      return
-  }
-
-  // console.log(
-  //   `Try to send ${amount} xtz to ${address}, with captcha token ${captchaToken}`
-  // )
-
-  const discriminant_challenge = randomBytes(10)
-  console.log({
-    discriminant_challenge: Buffer.from(discriminant_challenge).toString("hex"),
-  })
-
-  responseBody.status = "SUCCESS"
-  responseBody.vdfChallenge = {
-    challenge: discriminant_challenge,
-    // challenge: "adfdafaafas329084dfadf",
-    iterations: 10000,
-    // size: 512,
-    size: 2048,
-  }
-  res.status(200)
-  res.send(responseBody)
-  return
-
-  if (await checkCaptcha(captchaToken)) {
-    try {
-      responseBody.txHash = await send(amount, address)
-      responseBody.status = "SUCCESS"
-      res.status(200)
-    } catch (error) {
-      responseBody.message = `${error}`
-      responseBody.status = "ERROR"
-      res.status(500)
+  try {
+    let profiles: any = {
+      user: {
+        profile: Profile.USER,
+        amount: process.env.FAUCET_AMOUNT_USER || defaultUserAmount,
+        currency: "tez",
+      },
+      baker: {
+        profile: Profile.BAKER,
+        amount: process.env.FAUCET_AMOUNT_BAKER || defaultBakerAmount,
+        currency: "tez",
+      },
     }
-  } else {
-    responseBody.status = "ERROR"
-    responseBody.message = `Captcha error`
-    res.status(400)
-  }
 
-  res.send(responseBody)
+    let info: InfoResponseBody = {
+      faucetAddress: process.env.FAUCET_ADDRESS,
+      captchaEnable: JSON.parse(process.env.ENABLE_CAPTCHA),
+      profiles: profiles,
+      maxBalance: process.env.MAX_BALANCE,
+    }
+
+    res.status(200)
+    res.send(info)
+  } catch (error) {
+    res.status(400)
+    res.send("Exception")
+  }
 })
 
-const vdf = createVdf()
+const DIFFICULTY = 4
+app.post("/challenge", async (req: Request, res: Response) => {
+  const { address, captchaToken, profile } = req.body
+
+  console.log(req.body)
+
+  const validCaptcha = await checkCaptcha(captchaToken).catch((e) =>
+    res.status(400).send(e.message)
+  )
+
+  if (validCaptcha) {
+    console.log("GOOD TOKEN")
+  } else {
+    console.log("BAD TOKEN")
+    res.status(400).send({ status: "ERROR", message: "Captcha error" })
+    return
+  }
+
+  if (!address) {
+    res.status(400).send("The address property is required.")
+    return
+  }
+
+  try {
+    getTezAmountForProfile(profile)
+  } catch (e: any) {
+    res.status(400).send({ status: "ERROR", message: e.message })
+    return
+  }
+
+  // Generate or return existing PoW challenge.
+  const challenge =
+    (await redisClient.get(`address:${address}:challenge`)) ||
+    crypto.randomBytes(32).toString("hex")
+  // const challenge = crypto.randomBytes(32).toString("hex")
+
+  // Save the challenge and the associated address in Redis. Will only save if
+  // not already set. Set the challenge to expire after 30 minutes.
+  await redisClient.set(`address:${address}:challenge`, challenge, {
+    EX: 1800,
+    NX: true,
+  })
+  console.log({ challenge, difficulty: DIFFICULTY })
+  res.status(200).send({ challenge, difficulty: DIFFICULTY })
+})
 
 app.post("/verify", async (req: Request, res: Response) => {
-  const body: any = req.body
-  // const body: VerificationRequestBody = req.body
+  const { address, captchaToken, solution, nonce } = req.body
 
-  const { challenge, iterations, size, solution, profile, address } = body
-  // console.log({ solution: Buffer.from(solution, "hex") })
-  let responseBody: ResponseBody = {
-    status: "",
-    message: undefined,
-    txHash: undefined,
-  }
+  const validCaptcha = await checkCaptcha(captchaToken).catch((e) =>
+    res.status(400).send(e.message)
+  )
 
-  // Verify the solution (use the VDF library's verify method)
-  const v = await vdf
-  // console.log({ v })
-  let solutionBuffer = Buffer.from(solution, "base64")
-  // console.log({ bufferFromSolution: Buffer.from(solution) })
-  // let uint8Array = new Uint8Array(buffer)
-  console.log({ solutionBuffer, challenge, size, iterations })
-  console.log(solutionBuffer.toString("hex"))
-  const isValid = v.verify(iterations, challenge, solutionBuffer, size, false)
-  console.log({isValid})
-  if (isValid) {
-    let amount: number = 0
-
-    switch (profile) {
-      case Profile.USER:
-        amount = process.env.FAUCET_AMOUNT_USER || defaultUserAmount
-        break
-      case Profile.BAKER:
-        amount = process.env.FAUCET_AMOUNT_BAKER || defaultBakerAmount
-        break
-      default:
-        console.log(`Unknown profile ${profile}`)
-        responseBody.status = "ERROR"
-        responseBody.message = `Unknown profile`
-        res.status(400)
-        res.send(responseBody)
-        return
-    }
-    try {
-      responseBody.txHash = await send(amount, address)
-      responseBody.status = "SUCCESS"
-      res.status(200)
-    } catch (error) {
-      responseBody.message = `${error}`
-      responseBody.status = "ERROR"
-      res.status(500)
-    }
+  if (validCaptcha) {
+    console.log("GOOD TOKEN")
   } else {
-    responseBody.status = "ERROR"
-    responseBody.message = `Invalid solution`
-    res.status(400)
+    console.log("BAD TOKEN")
+    res.status(500).send({ status: "ERROR", message: "Captcha error" })
+    return
   }
 
-  res.send(responseBody)
+  const challenge = await redisClient.get(`address:${address}:challenge`)
+  console.log({ address, solution, nonce })
+  // Validate the solution by checking that the SHA-256 hash of the challenge concatenated with the nonce
+  // starts with a certain number of zeroes (the difficulty)
+  const hash = crypto
+    .createHash("sha256")
+    .update(`${challenge}:${nonce}`)
+    .digest("hex")
+
+  console.log({ hash })
+
+  const difficulty = DIFFICULTY // Adjust this value to change the difficulty of the PoW
+  if (hash === solution && hash.startsWith("0".repeat(difficulty))) {
+    // The solution is correct
+    // Here is where you would send the tez to the user's address
+    // For the sake of this example, we're just logging the address
+    console.log(`Send tez to ${address}`)
+    // responseBody.txHash = await send(amount, address)
+
+    // Delete the challenge from Redis
+    await redisClient.del(`address:${address}:challenge`)
+
+    res.status(200).send({ status: "SUCCESS", message: "Tez sent" })
+  } else {
+    // The solution is incorrect
+    res.status(400).send({ status: "ERROR", message: "Incorrect solution" })
+  }
 })
 
 const port: number = process.env.API_PORT || defaultPort
 
-app.listen(port, () => {
+app.listen(port, async () => {
   console.log(`Start API on port ${port}.`)
+  await redisClient.connect()
+  console.log("Connected to redis.")
 })

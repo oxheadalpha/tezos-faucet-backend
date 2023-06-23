@@ -6,7 +6,7 @@
   "scripts": {
     "build": "npx tsc",
     "dev": "nodemon -e ts -w src --exec \"npx tsc && npm run serve\"",
-    "serve": "node --experimental-modules --experimental-wasm-modules dist/api.js",
+    "serve": "node dist/api.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -28,7 +28,8 @@
     "body-parser": "^1.20.0",
     "dotenv": "^16.0.1",
     "express": "^4.18.1",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "redis": "^4.6.7"
   },
   "devDependencies": {
     "@types/cors": "^2.8.12",
