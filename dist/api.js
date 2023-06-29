@@ -22,10 +22,10 @@ const Types_1 = require("./Types");
 const Captcha_1 = require("./Captcha");
 const Tezos_1 = require("./Tezos");
 dotenv_1.default.config();
-const redisClient = (0, redis_1.createClient)({
+const redis = (0, redis_1.createClient)({
 // url: "redis://localhost:6379",
 }); // reject
-redisClient.on("error", (err) => console.log("Redis Client Error", err));
+redis.on("error", (err) => console.log("Redis Client Error", err));
 const defaultPort = 3000;
 const defaultUserAmount = 1;
 const defaultBakerAmount = 6000;
@@ -69,10 +69,10 @@ app.get("/info", (_, res) => {
         res.send("Exception");
     }
 });
-const DIFFICULTY = 4;
+const DIFFICULTY = 3;
+const CHALLENGES_NEEDED = 4;
 app.post("/challenge", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { address, captchaToken, profile } = req.body;
-    console.log(req.body);
     const validCaptcha = yield (0, Captcha_1.checkCaptcha)(captchaToken).catch((e) => res.status(400).send(e.message));
     if (validCaptcha) {
         console.log("GOOD TOKEN");
@@ -93,21 +93,38 @@ app.post("/challenge", (req, res) => __awaiter(void 0, void 0, void 0, function*
         res.status(400).send({ status: "ERROR", message: e.message });
         return;
     }
-    // Generate or return existing PoW challenge.
-    const challenge = (yield redisClient.get(`address:${address}:challenge`)) ||
-        crypto_1.default.randomBytes(32).toString("hex");
-    // const challenge = crypto.randomBytes(32).toString("hex")
-    // Save the challenge and the associated address in Redis. Will only save if
-    // not already set. Set the challenge to expire after 30 minutes.
-    yield redisClient.set(`address:${address}:challenge`, challenge, {
-        EX: 1800,
-        NX: true,
-    });
-    console.log({ challenge, difficulty: DIFFICULTY });
-    res.status(200).send({ challenge, difficulty: DIFFICULTY });
+    try {
+        const challengekey = `address:${address}`;
+        let challenge = yield redis.hGet(challengekey, "challenge");
+        if (!challenge) {
+            challenge = crypto_1.default.randomBytes(32).toString("hex");
+            // Set the challenge and challenge counter.
+            yield redis.hSet(challengekey, {
+                challenge,
+                counter: 1,
+            });
+            yield redis.expire(challengekey, 1800);
+        }
+        console.log({ challenge, difficulty: DIFFICULTY });
+        res.status(200).send({ challenge, difficulty: DIFFICULTY });
+    }
+    catch (err) {
+        const message = "Error fetching challenge";
+        console.error(message, err);
+        res.status(500).send({ status: "ERROR", message });
+    }
 }));
 app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { address, captchaToken, solution, nonce } = req.body;
+    if (!address || !solution || !nonce) {
+        res
+            .status(400)
+            .send({
+            status: "ERROR",
+            message: "'address', 'solution', and 'nonce' are required",
+        });
+        return;
+    }
     const validCaptcha = yield (0, Captcha_1.checkCaptcha)(captchaToken).catch((e) => res.status(400).send(e.message));
     if (validCaptcha) {
         console.log("GOOD TOKEN");
@@ -117,24 +134,35 @@ app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         res.status(500).send({ status: "ERROR", message: "Captcha error" });
         return;
     }
-    const challenge = yield redisClient.get(`address:${address}:challenge`);
-    console.log({ address, solution, nonce });
+    const challengeKey = `address:${address}`;
+    // await redis.watch(`address:${address}`)
+    const { challenge, counter } = yield redis.hGetAll(challengeKey);
     // Validate the solution by checking that the SHA-256 hash of the challenge concatenated with the nonce
     // starts with a certain number of zeroes (the difficulty)
     const hash = crypto_1.default
         .createHash("sha256")
         .update(`${challenge}:${nonce}`)
         .digest("hex");
-    console.log({ hash });
-    const difficulty = DIFFICULTY; // Adjust this value to change the difficulty of the PoW
-    if (hash === solution && hash.startsWith("0".repeat(difficulty))) {
-        // The solution is correct
+    console.log({ address, solution, hash, nonce, counter });
+    if (hash === solution && hash.startsWith("0".repeat(DIFFICULTY) + "8")) {
+        const challengeCounter = Number(counter);
+        if (challengeCounter < CHALLENGES_NEEDED) {
+            console.log("GETTING NEW CHALLENGE");
+            const newChallenge = crypto_1.default.randomBytes(32).toString("hex");
+            const result = yield redis.hSet(challengeKey, {
+                challenge: newChallenge,
+                counter: challengeCounter + 1,
+            });
+            res.status(200).send({ challenge: newChallenge, difficulty: DIFFICULTY });
+            return;
+        }
         // Here is where you would send the tez to the user's address
         // For the sake of this example, we're just logging the address
         console.log(`Send tez to ${address}`);
+        // getTezAmountForProfile(profile)
         // responseBody.txHash = await send(amount, address)
         // Delete the challenge from Redis
-        yield redisClient.del(`address:${address}:challenge`);
+        yield redis.del(challengeKey);
         res.status(200).send({ status: "SUCCESS", message: "Tez sent" });
     }
     else {
@@ -145,6 +173,6 @@ app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
 const port = process.env.API_PORT || defaultPort;
 app.listen(port, () => __awaiter(void 0, void 0, void 0, function* () {
     console.log(`Start API on port ${port}.`);
-    yield redisClient.connect();
+    yield redis.connect();
     console.log("Connected to redis.");
 }));

@@ -10,10 +10,10 @@ import { checkCaptcha } from "./Captcha"
 import { getTezAmountForProfile } from "./Tezos"
 
 dotenv.config()
-const redisClient = createClient({
+const redis = createClient({
   // url: "redis://localhost:6379",
 }) // reject
-redisClient.on("error", (err) => console.log("Redis Client Error", err))
+redis.on("error", (err) => console.log("Redis Client Error", err))
 
 const defaultPort: number = 3000
 const defaultUserAmount: number = 1
@@ -67,11 +67,11 @@ app.get("/info", (_, res: Response) => {
   }
 })
 
-const DIFFICULTY = 4
+const DIFFICULTY = 3
+const CHALLENGES_NEEDED = 4
+
 app.post("/challenge", async (req: Request, res: Response) => {
   const { address, captchaToken, profile } = req.body
-
-  console.log(req.body)
 
   const validCaptcha = await checkCaptcha(captchaToken).catch((e) =>
     res.status(400).send(e.message)
@@ -97,24 +97,41 @@ app.post("/challenge", async (req: Request, res: Response) => {
     return
   }
 
-  // Generate or return existing PoW challenge.
-  const challenge =
-    (await redisClient.get(`address:${address}:challenge`)) ||
-    crypto.randomBytes(32).toString("hex")
-  // const challenge = crypto.randomBytes(32).toString("hex")
+  try {
+    const challengekey = `address:${address}`
+    let challenge = await redis.hGet(challengekey, "challenge")
 
-  // Save the challenge and the associated address in Redis. Will only save if
-  // not already set. Set the challenge to expire after 30 minutes.
-  await redisClient.set(`address:${address}:challenge`, challenge, {
-    EX: 1800,
-    NX: true,
-  })
-  console.log({ challenge, difficulty: DIFFICULTY })
-  res.status(200).send({ challenge, difficulty: DIFFICULTY })
+    if (!challenge) {
+      challenge = crypto.randomBytes(32).toString("hex")
+      // Set the challenge and challenge counter.
+      await redis.hSet(challengekey, {
+        challenge,
+        counter: 1,
+      })
+      await redis.expire(challengekey, 1800)
+    }
+
+    console.log({ challenge, difficulty: DIFFICULTY })
+    res.status(200).send({ challenge, difficulty: DIFFICULTY })
+  } catch (err) {
+    const message = "Error fetching challenge"
+    console.error(message, err)
+    res.status(500).send({ status: "ERROR", message })
+  }
 })
 
 app.post("/verify", async (req: Request, res: Response) => {
   const { address, captchaToken, solution, nonce } = req.body
+
+  if (!address || !solution || !nonce) {
+    res
+      .status(400)
+      .send({
+        status: "ERROR",
+        message: "'address', 'solution', and 'nonce' are required",
+      })
+    return
+  }
 
   const validCaptcha = await checkCaptcha(captchaToken).catch((e) =>
     res.status(400).send(e.message)
@@ -128,8 +145,10 @@ app.post("/verify", async (req: Request, res: Response) => {
     return
   }
 
-  const challenge = await redisClient.get(`address:${address}:challenge`)
-  console.log({ address, solution, nonce })
+  const challengeKey = `address:${address}`
+  // await redis.watch(`address:${address}`)
+  const { challenge, counter } = await redis.hGetAll(challengeKey)
+
   // Validate the solution by checking that the SHA-256 hash of the challenge concatenated with the nonce
   // starts with a certain number of zeroes (the difficulty)
   const hash = crypto
@@ -137,18 +156,29 @@ app.post("/verify", async (req: Request, res: Response) => {
     .update(`${challenge}:${nonce}`)
     .digest("hex")
 
-  console.log({ hash })
+  console.log({ address, solution, hash, nonce, counter })
 
-  const difficulty = DIFFICULTY // Adjust this value to change the difficulty of the PoW
-  if (hash === solution && hash.startsWith("0".repeat(difficulty))) {
-    // The solution is correct
+  if (hash === solution && hash.startsWith("0".repeat(DIFFICULTY) + "8")) {
+    const challengeCounter = Number(counter)
+    if (challengeCounter < CHALLENGES_NEEDED) {
+      console.log("GETTING NEW CHALLENGE")
+      const newChallenge = crypto.randomBytes(32).toString("hex")
+      const result = await redis.hSet(challengeKey, {
+        challenge: newChallenge,
+        counter: challengeCounter + 1,
+      })
+      res.status(200).send({ challenge: newChallenge, difficulty: DIFFICULTY })
+      return
+    }
+
     // Here is where you would send the tez to the user's address
     // For the sake of this example, we're just logging the address
     console.log(`Send tez to ${address}`)
+    // getTezAmountForProfile(profile)
     // responseBody.txHash = await send(amount, address)
 
     // Delete the challenge from Redis
-    await redisClient.del(`address:${address}:challenge`)
+    await redis.del(challengeKey)
 
     res.status(200).send({ status: "SUCCESS", message: "Tez sent" })
   } else {
@@ -161,6 +191,6 @@ const port: number = process.env.API_PORT || defaultPort
 
 app.listen(port, async () => {
   console.log(`Start API on port ${port}.`)
-  await redisClient.connect()
+  await redis.connect()
   console.log("Connected to redis.")
 })
