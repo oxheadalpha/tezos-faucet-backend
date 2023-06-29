@@ -1,6 +1,7 @@
 import axios from "axios"
+import { Response } from "express"
 
-export const checkCaptcha = async (responseToken: string) => {
+const checkCaptcha = async (responseToken: string) => {
   if (!responseToken) {
     throw new Error("Missing captcha token.")
   }
@@ -17,5 +18,20 @@ export const checkCaptcha = async (responseToken: string) => {
   const captchaURL = `https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${responseToken}`
 
   const res = await axios.post(captchaURL)
-  return res.data.success
+  return res.data
+}
+
+export const validateCaptcha = async (res: Response, captchaToken: string) => {
+  try {
+    const response = await checkCaptcha(captchaToken)
+    console.log(response)
+    if (!response.success) {
+      res.status(400).send({ status: "ERROR", message: "Invalid captcha" })
+      return false
+    }
+  } catch (err) {
+    res.status(400).send({ status: "ERROR", message: "Captcha error" })
+    return false
+  }
+  return true
 }

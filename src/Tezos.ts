@@ -3,8 +3,8 @@ import { TezosToolkit } from "@taquito/taquito"
 import { Profile } from "./Types"
 
 const defaultMaxBalance: number = 6000
-const defaultUserAmount: number = 1
-const defaultBakerAmount: number = 6000
+export const defaultUserAmount: number = 1
+export const defaultBakerAmount: number = 6000
 
 export const getTezAmountForProfile = (profile: Profile) => {
   let amount: number = 0

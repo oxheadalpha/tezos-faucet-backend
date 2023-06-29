@@ -9,21 +9,21 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.send = exports.getTezAmountForProfile = void 0;
+exports.send = exports.getTezAmountForProfile = exports.defaultBakerAmount = exports.defaultUserAmount = void 0;
 const signer_1 = require("@taquito/signer");
 const taquito_1 = require("@taquito/taquito");
 const Types_1 = require("./Types");
 const defaultMaxBalance = 6000;
-const defaultUserAmount = 1;
-const defaultBakerAmount = 6000;
+exports.defaultUserAmount = 1;
+exports.defaultBakerAmount = 6000;
 const getTezAmountForProfile = (profile) => {
     let amount = 0;
     switch (profile) {
         case Types_1.Profile.USER:
-            amount = process.env.FAUCET_AMOUNT_USER || defaultUserAmount;
+            amount = process.env.FAUCET_AMOUNT_USER || exports.defaultUserAmount;
             break;
         case Types_1.Profile.BAKER:
-            amount = process.env.FAUCET_AMOUNT_BAKER || defaultBakerAmount;
+            amount = process.env.FAUCET_AMOUNT_BAKER || exports.defaultBakerAmount;
             break;
         default:
             throw new Error(`Unknown profile ${profile}`);

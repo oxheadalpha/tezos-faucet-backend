@@ -6,25 +6,27 @@ import crypto from "crypto"
 import { createClient } from "redis"
 
 import { Profile, RequestBody, ResponseBody, InfoResponseBody } from "./Types"
-import { checkCaptcha } from "./Captcha"
-import { getTezAmountForProfile } from "./Tezos"
+import { validateCaptcha } from "./Captcha"
+import {
+  getTezAmountForProfile,
+  defaultBakerAmount,
+  defaultUserAmount,
+} from "./Tezos"
 
 dotenv.config()
+
 const redis = createClient({
   // url: "redis://localhost:6379",
 }) // reject
-redis.on("error", (err) => console.log("Redis Client Error", err))
 
-const defaultPort: number = 3000
-const defaultUserAmount: number = 1
-const defaultBakerAmount: number = 6000
+redis.on("error", (err) => console.log("Redis Client Error", err))
 
 const app: Express = express()
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 app.use(morgan("dev"))
 
-app.use((req: Request, res: Response, next) => {
+app.use((_, res: Response, next) => {
   const cors: string = process.env.AUTHORIZED_HOST || "*"
   res.setHeader("Access-Control-Allow-Origin", cors)
   res.setHeader("Access-Control-Allow-Methods", "GET, POST")
@@ -37,9 +39,8 @@ app.use((req: Request, res: Response, next) => {
 })
 
 app.get("/info", (_, res: Response) => {
-  console.log("Get info")
   try {
-    let profiles: any = {
+    const profiles: any = {
       user: {
         profile: Profile.USER,
         amount: process.env.FAUCET_AMOUNT_USER || defaultUserAmount,
@@ -52,18 +53,15 @@ app.get("/info", (_, res: Response) => {
       },
     }
 
-    let info: InfoResponseBody = {
+    const info: InfoResponseBody = {
       faucetAddress: process.env.FAUCET_ADDRESS,
       captchaEnable: JSON.parse(process.env.ENABLE_CAPTCHA),
-      profiles: profiles,
+      profiles,
       maxBalance: process.env.MAX_BALANCE,
     }
-
-    res.status(200)
-    res.send(info)
+    res.status(200).send(info)
   } catch (error) {
-    res.status(400)
-    res.send("Exception")
+    res.status(500).send({ status: "ERROR", message: "An exception occurred" })
   }
 })
 
@@ -73,22 +71,12 @@ const CHALLENGES_NEEDED = 4
 app.post("/challenge", async (req: Request, res: Response) => {
   const { address, captchaToken, profile } = req.body
 
-  const validCaptcha = await checkCaptcha(captchaToken).catch((e) =>
-    res.status(400).send(e.message)
-  )
-
-  if (validCaptcha) {
-    console.log("GOOD TOKEN")
-  } else {
-    console.log("BAD TOKEN")
-    res.status(400).send({ status: "ERROR", message: "Captcha error" })
+  if (!address || !profile) {
+    res.status(400).send("'address' and 'profile' are required")
     return
   }
 
-  if (!address) {
-    res.status(400).send("The address property is required.")
-    return
-  }
+  if (!validateCaptcha(res, captchaToken)) return
 
   try {
     getTezAmountForProfile(profile)
@@ -124,26 +112,14 @@ app.post("/verify", async (req: Request, res: Response) => {
   const { address, captchaToken, solution, nonce } = req.body
 
   if (!address || !solution || !nonce) {
-    res
-      .status(400)
-      .send({
-        status: "ERROR",
-        message: "'address', 'solution', and 'nonce' are required",
-      })
+    res.status(400).send({
+      status: "ERROR",
+      message: "'address', 'solution', and 'nonce' are required",
+    })
     return
   }
 
-  const validCaptcha = await checkCaptcha(captchaToken).catch((e) =>
-    res.status(400).send(e.message)
-  )
-
-  if (validCaptcha) {
-    console.log("GOOD TOKEN")
-  } else {
-    console.log("BAD TOKEN")
-    res.status(500).send({ status: "ERROR", message: "Captcha error" })
-    return
-  }
+  if (!validateCaptcha(res, captchaToken)) return
 
   const challengeKey = `address:${address}`
   // await redis.watch(`address:${address}`)
@@ -187,7 +163,7 @@ app.post("/verify", async (req: Request, res: Response) => {
   }
 })
 
-const port: number = process.env.API_PORT || defaultPort
+const port: number = process.env.API_PORT || 3000
 
 app.listen(port, async () => {
   console.log(`Start API on port ${port}.`)

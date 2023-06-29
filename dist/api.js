@@ -26,14 +26,11 @@ const redis = (0, redis_1.createClient)({
 // url: "redis://localhost:6379",
 }); // reject
 redis.on("error", (err) => console.log("Redis Client Error", err));
-const defaultPort = 3000;
-const defaultUserAmount = 1;
-const defaultBakerAmount = 6000;
 const app = (0, express_1.default)();
 app.use(body_parser_1.default.json());
 app.use(body_parser_1.default.urlencoded({ extended: true }));
 app.use((0, morgan_1.default)("dev"));
-app.use((req, res, next) => {
+app.use((_, res, next) => {
     const cors = process.env.AUTHORIZED_HOST || "*";
     res.setHeader("Access-Control-Allow-Origin", cors);
     res.setHeader("Access-Control-Allow-Methods", "GET, POST");
@@ -41,51 +38,41 @@ app.use((req, res, next) => {
     next();
 });
 app.get("/info", (_, res) => {
-    console.log("Get info");
     try {
-        let profiles = {
+        const profiles = {
             user: {
                 profile: Types_1.Profile.USER,
-                amount: process.env.FAUCET_AMOUNT_USER || defaultUserAmount,
+                amount: process.env.FAUCET_AMOUNT_USER || Tezos_1.defaultUserAmount,
                 currency: "tez",
             },
             baker: {
                 profile: Types_1.Profile.BAKER,
-                amount: process.env.FAUCET_AMOUNT_BAKER || defaultBakerAmount,
+                amount: process.env.FAUCET_AMOUNT_BAKER || Tezos_1.defaultBakerAmount,
                 currency: "tez",
             },
         };
-        let info = {
+        const info = {
             faucetAddress: process.env.FAUCET_ADDRESS,
             captchaEnable: JSON.parse(process.env.ENABLE_CAPTCHA),
-            profiles: profiles,
+            profiles,
             maxBalance: process.env.MAX_BALANCE,
         };
-        res.status(200);
-        res.send(info);
+        res.status(200).send(info);
     }
     catch (error) {
-        res.status(400);
-        res.send("Exception");
+        res.status(500).send({ status: "ERROR", message: "An exception occurred" });
     }
 });
 const DIFFICULTY = 3;
 const CHALLENGES_NEEDED = 4;
 app.post("/challenge", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { address, captchaToken, profile } = req.body;
-    const validCaptcha = yield (0, Captcha_1.checkCaptcha)(captchaToken).catch((e) => res.status(400).send(e.message));
-    if (validCaptcha) {
-        console.log("GOOD TOKEN");
-    }
-    else {
-        console.log("BAD TOKEN");
-        res.status(400).send({ status: "ERROR", message: "Captcha error" });
+    if (!address || !profile) {
+        res.status(400).send("'address' and 'profile' are required");
         return;
     }
-    if (!address) {
-        res.status(400).send("The address property is required.");
+    if (!(0, Captcha_1.validateCaptcha)(res, captchaToken))
         return;
-    }
     try {
         (0, Tezos_1.getTezAmountForProfile)(profile);
     }
@@ -117,23 +104,14 @@ app.post("/challenge", (req, res) => __awaiter(void 0, void 0, void 0, function*
 app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { address, captchaToken, solution, nonce } = req.body;
     if (!address || !solution || !nonce) {
-        res
-            .status(400)
-            .send({
+        res.status(400).send({
             status: "ERROR",
             message: "'address', 'solution', and 'nonce' are required",
         });
         return;
     }
-    const validCaptcha = yield (0, Captcha_1.checkCaptcha)(captchaToken).catch((e) => res.status(400).send(e.message));
-    if (validCaptcha) {
-        console.log("GOOD TOKEN");
-    }
-    else {
-        console.log("BAD TOKEN");
-        res.status(500).send({ status: "ERROR", message: "Captcha error" });
+    if (!(0, Captcha_1.validateCaptcha)(res, captchaToken))
         return;
-    }
     const challengeKey = `address:${address}`;
     // await redis.watch(`address:${address}`)
     const { challenge, counter } = yield redis.hGetAll(challengeKey);
@@ -170,7 +148,7 @@ app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         res.status(400).send({ status: "ERROR", message: "Incorrect solution" });
     }
 }));
-const port = process.env.API_PORT || defaultPort;
+const port = process.env.API_PORT || 3000;
 app.listen(port, () => __awaiter(void 0, void 0, void 0, function* () {
     console.log(`Start API on port ${port}.`);
     yield redis.connect();

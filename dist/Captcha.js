@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.checkCaptcha = void 0;
+exports.validateCaptcha = void 0;
 const axios_1 = __importDefault(require("axios"));
 const checkCaptcha = (responseToken) => __awaiter(void 0, void 0, void 0, function* () {
     if (!responseToken) {
@@ -26,6 +26,21 @@ const checkCaptcha = (responseToken) => __awaiter(void 0, void 0, void 0, functi
     const secret = process.env.FAUCET_CAPTCHA_SECRET;
     const captchaURL = `https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${responseToken}`;
     const res = yield axios_1.default.post(captchaURL);
-    return res.data.success;
+    return res.data;
 });
-exports.checkCaptcha = checkCaptcha;
+const validateCaptcha = (res, captchaToken) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const response = yield checkCaptcha(captchaToken);
+        console.log(response);
+        if (!response.success) {
+            res.status(400).send({ status: "ERROR", message: "Invalid captcha" });
+            return false;
+        }
+    }
+    catch (err) {
+        res.status(400).send({ status: "ERROR", message: "Captcha error" });
+        return false;
+    }
+    return true;
+});
+exports.validateCaptcha = validateCaptcha;
