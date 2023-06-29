@@ -31,7 +31,6 @@ const checkCaptcha = (responseToken) => __awaiter(void 0, void 0, void 0, functi
 const validateCaptcha = (res, captchaToken) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const response = yield checkCaptcha(captchaToken);
-        console.log(response);
         if (!response.success) {
             res.status(400).send({ status: "ERROR", message: "Invalid captcha" });
             return false;

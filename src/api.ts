@@ -1,17 +1,17 @@
-import express, { Express, Request, Response } from "express"
 import bodyParser from "body-parser"
-import morgan from "morgan"
 import dotenv from "dotenv"
-import crypto from "crypto"
+import express, { Express, Request, Response } from "express"
+import morgan from "morgan"
 import { createClient } from "redis"
 
-import { Profile, RequestBody, ResponseBody, InfoResponseBody } from "./Types"
 import { validateCaptcha } from "./Captcha"
 import {
-  getTezAmountForProfile,
   defaultBakerAmount,
   defaultUserAmount,
+  getTezAmountForProfile,
 } from "./Tezos"
+import { InfoResponseBody, Profile, RequestBody, ResponseBody } from "./Types"
+import { generateChallenge, getChallengeKey, verifySolution } from "./pow"
 
 dotenv.config()
 
@@ -90,12 +90,13 @@ app.post("/challenge", async (req: Request, res: Response) => {
     let challenge = await redis.hGet(challengekey, "challenge")
 
     if (!challenge) {
-      challenge = crypto.randomBytes(32).toString("hex")
+      challenge = generateChallenge()
       // Set the challenge and challenge counter.
       await redis.hSet(challengekey, {
         challenge,
         counter: 1,
       })
+      // Challenge should expire after 30m.
       await redis.expire(challengekey, 1800)
     }
 
@@ -121,25 +122,32 @@ app.post("/verify", async (req: Request, res: Response) => {
 
   if (!validateCaptcha(res, captchaToken)) return
 
-  const challengeKey = `address:${address}`
-  // await redis.watch(`address:${address}`)
+  const challengeKey = getChallengeKey(address)
+
   const { challenge, counter } = await redis.hGetAll(challengeKey)
 
   // Validate the solution by checking that the SHA-256 hash of the challenge concatenated with the nonce
   // starts with a certain number of zeroes (the difficulty)
-  const hash = crypto
-    .createHash("sha256")
-    .update(`${challenge}:${nonce}`)
-    .digest("hex")
+  const isValidSolution = verifySolution({
+    challenge,
+    difficulty: DIFFICULTY,
+    nonce,
+    solution,
+  })
 
-  console.log({ address, solution, hash, nonce, counter })
+  console.log({ address, solution, nonce, counter })
 
-  if (hash === solution && hash.startsWith("0".repeat(DIFFICULTY) + "8")) {
+  if (!isValidSolution) {
+    res.status(400).send({ status: "ERROR", message: "Incorrect solution" })
+    return
+  }
+
+  try {
     const challengeCounter = Number(counter)
     if (challengeCounter < CHALLENGES_NEEDED) {
-      console.log("GETTING NEW CHALLENGE")
-      const newChallenge = crypto.randomBytes(32).toString("hex")
-      const result = await redis.hSet(challengeKey, {
+      console.log(`GETTING CHALLENGE ${challengeCounter}`)
+      const newChallenge = generateChallenge()
+      await redis.hSet(challengeKey, {
         challenge: newChallenge,
         counter: challengeCounter + 1,
       })
@@ -152,21 +160,22 @@ app.post("/verify", async (req: Request, res: Response) => {
     console.log(`Send tez to ${address}`)
     // getTezAmountForProfile(profile)
     // responseBody.txHash = await send(amount, address)
-
-    // Delete the challenge from Redis
-    await redis.del(challengeKey)
-
     res.status(200).send({ status: "SUCCESS", message: "Tez sent" })
-  } else {
-    // The solution is incorrect
-    res.status(400).send({ status: "ERROR", message: "Incorrect solution" })
+
+    await redis.del(challengeKey).catch((e) => console.error(e.message))
+  } catch (err) {
+    console.error(err)
+    res.status(500).send({ status: "ERROR", message: "An error occurred" })
   }
 })
 
 const port: number = process.env.API_PORT || 3000
 
-app.listen(port, async () => {
-  console.log(`Start API on port ${port}.`)
+;(async () => {
+  app.listen(port, async () => {
+    console.log(`Start API on port ${port}.`)
+  })
+
   await redis.connect()
   console.log("Connected to redis.")
-})
+})()

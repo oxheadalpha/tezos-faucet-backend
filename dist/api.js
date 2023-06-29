@@ -12,15 +12,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = __importDefault(require("express"));
 const body_parser_1 = __importDefault(require("body-parser"));
-const morgan_1 = __importDefault(require("morgan"));
 const dotenv_1 = __importDefault(require("dotenv"));
-const crypto_1 = __importDefault(require("crypto"));
+const express_1 = __importDefault(require("express"));
+const morgan_1 = __importDefault(require("morgan"));
 const redis_1 = require("redis");
-const Types_1 = require("./Types");
 const Captcha_1 = require("./Captcha");
 const Tezos_1 = require("./Tezos");
+const Types_1 = require("./Types");
+const pow_1 = require("./pow");
 dotenv_1.default.config();
 const redis = (0, redis_1.createClient)({
 // url: "redis://localhost:6379",
@@ -84,12 +84,13 @@ app.post("/challenge", (req, res) => __awaiter(void 0, void 0, void 0, function*
         const challengekey = `address:${address}`;
         let challenge = yield redis.hGet(challengekey, "challenge");
         if (!challenge) {
-            challenge = crypto_1.default.randomBytes(32).toString("hex");
+            challenge = (0, pow_1.generateChallenge)();
             // Set the challenge and challenge counter.
             yield redis.hSet(challengekey, {
                 challenge,
                 counter: 1,
             });
+            // Challenge should expire after 30m.
             yield redis.expire(challengekey, 1800);
         }
         console.log({ challenge, difficulty: DIFFICULTY });
@@ -112,22 +113,27 @@ app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     }
     if (!(0, Captcha_1.validateCaptcha)(res, captchaToken))
         return;
-    const challengeKey = `address:${address}`;
-    // await redis.watch(`address:${address}`)
+    const challengeKey = (0, pow_1.getChallengeKey)(address);
     const { challenge, counter } = yield redis.hGetAll(challengeKey);
     // Validate the solution by checking that the SHA-256 hash of the challenge concatenated with the nonce
     // starts with a certain number of zeroes (the difficulty)
-    const hash = crypto_1.default
-        .createHash("sha256")
-        .update(`${challenge}:${nonce}`)
-        .digest("hex");
-    console.log({ address, solution, hash, nonce, counter });
-    if (hash === solution && hash.startsWith("0".repeat(DIFFICULTY) + "8")) {
+    const isValidSolution = (0, pow_1.verifySolution)({
+        challenge,
+        difficulty: DIFFICULTY,
+        nonce,
+        solution,
+    });
+    console.log({ address, solution, nonce, counter });
+    if (!isValidSolution) {
+        res.status(400).send({ status: "ERROR", message: "Incorrect solution" });
+        return;
+    }
+    try {
         const challengeCounter = Number(counter);
         if (challengeCounter < CHALLENGES_NEEDED) {
-            console.log("GETTING NEW CHALLENGE");
-            const newChallenge = crypto_1.default.randomBytes(32).toString("hex");
-            const result = yield redis.hSet(challengeKey, {
+            console.log(`GETTING CHALLENGE ${challengeCounter}`);
+            const newChallenge = (0, pow_1.generateChallenge)();
+            yield redis.hSet(challengeKey, {
                 challenge: newChallenge,
                 counter: challengeCounter + 1,
             });
@@ -139,18 +145,19 @@ app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         console.log(`Send tez to ${address}`);
         // getTezAmountForProfile(profile)
         // responseBody.txHash = await send(amount, address)
-        // Delete the challenge from Redis
-        yield redis.del(challengeKey);
         res.status(200).send({ status: "SUCCESS", message: "Tez sent" });
+        yield redis.del(challengeKey).catch((e) => console.error(e.message));
     }
-    else {
-        // The solution is incorrect
-        res.status(400).send({ status: "ERROR", message: "Incorrect solution" });
+    catch (err) {
+        console.error(err);
+        res.status(500).send({ status: "ERROR", message: "An error occurred" });
     }
 }));
 const port = process.env.API_PORT || 3000;
-app.listen(port, () => __awaiter(void 0, void 0, void 0, function* () {
-    console.log(`Start API on port ${port}.`);
+(() => __awaiter(void 0, void 0, void 0, function* () {
+    app.listen(port, () => __awaiter(void 0, void 0, void 0, function* () {
+        console.log(`Start API on port ${port}.`);
+    }));
     yield redis.connect();
     console.log("Connected to redis.");
-}));
+}))();

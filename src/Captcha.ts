@@ -24,7 +24,6 @@ const checkCaptcha = async (responseToken: string) => {
 export const validateCaptcha = async (res: Response, captchaToken: string) => {
   try {
     const response = await checkCaptcha(captchaToken)
-    console.log(response)
     if (!response.success) {
       res.status(400).send({ status: "ERROR", message: "Invalid captcha" })
       return false
