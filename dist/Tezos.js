@@ -9,9 +9,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.send = exports.getTezAmountForProfile = exports.defaultBakerAmount = exports.defaultUserAmount = void 0;
+exports.send = exports.validateAddress = exports.getTezAmountForProfile = exports.defaultBakerAmount = exports.defaultUserAmount = void 0;
 const signer_1 = require("@taquito/signer");
 const taquito_1 = require("@taquito/taquito");
+const utils_1 = require("@taquito/utils");
 const Types_1 = require("./Types");
 const defaultMaxBalance = 6000;
 exports.defaultUserAmount = 1;
@@ -31,6 +32,16 @@ const getTezAmountForProfile = (profile) => {
     return amount;
 };
 exports.getTezAmountForProfile = getTezAmountForProfile;
+const validateAddress = (res, address) => {
+    if ((0, utils_1.validateKeyHash)(address) !== 3) {
+        res
+            .status(400)
+            .send({ status: "ERROR", message: `The address '${address}' is invalid` });
+        return false;
+    }
+    return true;
+};
+exports.validateAddress = validateAddress;
 const send = (amount, address) => __awaiter(void 0, void 0, void 0, function* () {
     console.log(`Send ${amount} xtz to ${address}`);
     // Connect to RPC endpoint

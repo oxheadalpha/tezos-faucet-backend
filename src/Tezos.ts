@@ -1,5 +1,7 @@
 import { InMemorySigner } from "@taquito/signer"
 import { TezosToolkit } from "@taquito/taquito"
+import { validateKeyHash } from "@taquito/utils"
+import { Response } from "express"
 import { Profile } from "./Types"
 
 const defaultMaxBalance: number = 6000
@@ -21,6 +23,16 @@ export const getTezAmountForProfile = (profile: Profile) => {
   }
 
   return amount
+}
+
+export const validateAddress = (res: Response, address: string) => {
+  if (validateKeyHash(address) !== 3) {
+    res
+      .status(400)
+      .send({ status: "ERROR", message: `The address '${address}' is invalid` })
+    return false
+  }
+  return true
 }
 
 export const send = async (

@@ -9,6 +9,8 @@ import {
   defaultBakerAmount,
   defaultUserAmount,
   getTezAmountForProfile,
+  send,
+  validateAddress,
 } from "./Tezos"
 import { InfoResponseBody, Profile, RequestBody, ResponseBody } from "./Types"
 import { generateChallenge, getChallengeKey, verifySolution } from "./pow"
@@ -72,10 +74,11 @@ app.post("/challenge", async (req: Request, res: Response) => {
   const { address, captchaToken, profile } = req.body
 
   if (!address || !profile) {
-    res.status(400).send("'address' and 'profile' are required")
+    res.status(400).send("'address' and 'profile' fields are required")
     return
   }
 
+  if (!validateAddress(res, address)) return
   if (!validateCaptcha(res, captchaToken)) return
 
   try {
@@ -102,8 +105,8 @@ app.post("/challenge", async (req: Request, res: Response) => {
 
     console.log({ challenge, difficulty: DIFFICULTY })
     res.status(200).send({ challenge, difficulty: DIFFICULTY })
-  } catch (err) {
-    const message = "Error fetching challenge"
+  } catch (err: any) {
+    const message = "Error getting challenge"
     console.error(message, err)
     res.status(500).send({ status: "ERROR", message })
   }
@@ -115,11 +118,12 @@ app.post("/verify", async (req: Request, res: Response) => {
   if (!address || !solution || !nonce) {
     res.status(400).send({
       status: "ERROR",
-      message: "'address', 'solution', and 'nonce' are required",
+      message: "'address', 'solution', and 'nonce' fields are required",
     })
     return
   }
 
+  if (!validateAddress(res, address)) return
   if (!validateCaptcha(res, captchaToken)) return
 
   const challengeKey = getChallengeKey(address)
@@ -158,13 +162,14 @@ app.post("/verify", async (req: Request, res: Response) => {
     // Here is where you would send the tez to the user's address
     // For the sake of this example, we're just logging the address
     console.log(`Send tez to ${address}`)
-    // getTezAmountForProfile(profile)
-    // responseBody.txHash = await send(amount, address)
-    res.status(200).send({ status: "SUCCESS", message: "Tez sent" })
+    const amount = getTezAmountForProfile("BAKER" as Profile)
+    const b: any = {}
+    // b.txHash = await send(amount, address)
+    res.status(200).send({ ...b, status: "SUCCESS", message: "Tez sent" })
 
     await redis.del(challengeKey).catch((e) => console.error(e.message))
-  } catch (err) {
-    console.error(err)
+  } catch (err: any) {
+    console.error(err.message)
     res.status(500).send({ status: "ERROR", message: "An error occurred" })
   }
 })
