@@ -96,7 +96,7 @@ app.post("/challenge", (req, res) => __awaiter(void 0, void 0, void 0, function*
             yield redis.expire(challengekey, 1800);
         }
         console.log({ challenge, difficulty: DIFFICULTY });
-        res.status(200).send({ challenge, difficulty: DIFFICULTY });
+        res.status(200).send({ status: "SUCCESS", challenge, difficulty: DIFFICULTY });
     }
     catch (err) {
         const message = "Error getting challenge";
@@ -141,7 +141,7 @@ app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
                 challenge: newChallenge,
                 counter: challengeCounter + 1,
             });
-            res.status(200).send({ challenge: newChallenge, difficulty: DIFFICULTY });
+            res.status(200).send({ status: "SUCCESS", challenge: newChallenge, difficulty: DIFFICULTY });
             return;
         }
         // Here is where you would send the tez to the user's address

@@ -104,7 +104,7 @@ app.post("/challenge", async (req: Request, res: Response) => {
     }
 
     console.log({ challenge, difficulty: DIFFICULTY })
-    res.status(200).send({ challenge, difficulty: DIFFICULTY })
+    res.status(200).send({ status: "SUCCESS", challenge, difficulty: DIFFICULTY })
   } catch (err: any) {
     const message = "Error getting challenge"
     console.error(message, err)
@@ -155,7 +155,7 @@ app.post("/verify", async (req: Request, res: Response) => {
         challenge: newChallenge,
         counter: challengeCounter + 1,
       })
-      res.status(200).send({ challenge: newChallenge, difficulty: DIFFICULTY })
+      res.status(200).send({ status: "SUCCESS", challenge: newChallenge, difficulty: DIFFICULTY })
       return
     }
 
