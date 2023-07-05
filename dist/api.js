@@ -126,6 +126,10 @@ app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         return;
     const challengeKey = (0, pow_1.getChallengeKey)(address);
     const { challenge, counter } = yield redis.hGetAll(challengeKey);
+    if (!challenge) {
+        res.status(400).send({ status: "ERROR", message: "No challenge found" });
+        return;
+    }
     // Validate the solution by checking that the SHA-256 hash of the challenge concatenated with the nonce
     // starts with a certain number of zeroes (the difficulty)
     const isValidSolution = (0, pow_1.verifySolution)({
