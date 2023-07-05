@@ -96,7 +96,14 @@ app.post("/challenge", (req, res) => __awaiter(void 0, void 0, void 0, function*
             yield redis.expire(challengekey, 1800);
         }
         console.log({ challenge, difficulty: DIFFICULTY });
-        res.status(200).send({ status: "SUCCESS", challenge, difficulty: DIFFICULTY });
+        res
+            .status(200)
+            .send({
+            status: "SUCCESS",
+            challenge,
+            difficulty: DIFFICULTY,
+            counter: 1,
+        });
     }
     catch (err) {
         const message = "Error getting challenge";
@@ -137,11 +144,19 @@ app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         if (challengeCounter < CHALLENGES_NEEDED) {
             console.log(`GETTING CHALLENGE ${challengeCounter}`);
             const newChallenge = (0, pow_1.generateChallenge)();
+            const incrCounter = challengeCounter + 1;
             yield redis.hSet(challengeKey, {
                 challenge: newChallenge,
-                counter: challengeCounter + 1,
+                counter: incrCounter,
             });
-            res.status(200).send({ status: "SUCCESS", challenge: newChallenge, difficulty: DIFFICULTY });
+            res
+                .status(200)
+                .send({
+                status: "SUCCESS",
+                challenge: newChallenge,
+                difficulty: DIFFICULTY,
+                counter: incrCounter,
+            });
             return;
         }
         // Here is where you would send the tez to the user's address
@@ -150,6 +165,7 @@ app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         const amount = (0, Tezos_1.getTezAmountForProfile)("BAKER");
         const b = {};
         // b.txHash = await send(amount, address)
+        b.txHash = "hash";
         res.status(200).send(Object.assign(Object.assign({}, b), { status: "SUCCESS", message: "Tez sent" }));
         yield redis.del(challengeKey).catch((e) => console.error(e.message));
     }

@@ -104,7 +104,14 @@ app.post("/challenge", async (req: Request, res: Response) => {
     }
 
     console.log({ challenge, difficulty: DIFFICULTY })
-    res.status(200).send({ status: "SUCCESS", challenge, difficulty: DIFFICULTY })
+    res
+      .status(200)
+      .send({
+        status: "SUCCESS",
+        challenge,
+        difficulty: DIFFICULTY,
+        counter: 1,
+      })
   } catch (err: any) {
     const message = "Error getting challenge"
     console.error(message, err)
@@ -151,11 +158,19 @@ app.post("/verify", async (req: Request, res: Response) => {
     if (challengeCounter < CHALLENGES_NEEDED) {
       console.log(`GETTING CHALLENGE ${challengeCounter}`)
       const newChallenge = generateChallenge()
+      const incrCounter = challengeCounter + 1
       await redis.hSet(challengeKey, {
         challenge: newChallenge,
-        counter: challengeCounter + 1,
+        counter: incrCounter,
       })
-      res.status(200).send({ status: "SUCCESS", challenge: newChallenge, difficulty: DIFFICULTY })
+      res
+        .status(200)
+        .send({
+          status: "SUCCESS",
+          challenge: newChallenge,
+          difficulty: DIFFICULTY,
+          counter: incrCounter,
+        })
       return
     }
 
@@ -165,6 +180,7 @@ app.post("/verify", async (req: Request, res: Response) => {
     const amount = getTezAmountForProfile("BAKER" as Profile)
     const b: any = {}
     // b.txHash = await send(amount, address)
+    b.txHash = "hash"
     res.status(200).send({ ...b, status: "SUCCESS", message: "Tez sent" })
 
     await redis.del(challengeKey).catch((e) => console.error(e.message))
