@@ -63,105 +63,96 @@ app.get("/info", (_, res) => {
         res.status(500).send({ status: "ERROR", message: "An exception occurred" });
     }
 });
-const DIFFICULTY = 3;
+const DIFFICULTY = 4;
 const CHALLENGES_NEEDED = 4;
 app.post("/challenge", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { address, captchaToken, profile } = req.body;
     if (!address || !profile) {
-        res.status(400).send("'address' and 'profile' fields are required");
-        return;
+        return res.status(400).send({
+            satus: "ERROR",
+            message: "'address' and 'profile' fields are required",
+        });
     }
     if (!(0, Tezos_1.validateAddress)(res, address))
         return;
-    if (!(0, Captcha_1.validateCaptcha)(res, captchaToken))
-        return;
+    // if (!(await validateCaptcha(res, captchaToken))) return
     try {
         (0, Tezos_1.getTezAmountForProfile)(profile);
     }
     catch (e) {
-        res.status(400).send({ status: "ERROR", message: e.message });
-        return;
+        return res.status(400).send({ status: "ERROR", message: e.message });
     }
     try {
-        const challengekey = `address:${address}`;
-        let challenge = yield redis.hGet(challengekey, "challenge");
+        const challengeKey = (0, pow_1.getChallengeKey)(address);
+        let { challenge, counter } = yield (0, pow_1.getChallenge)(redis, challengeKey);
         if (!challenge) {
             challenge = (0, pow_1.generateChallenge)();
-            // Set the challenge and challenge counter.
-            yield redis.hSet(challengekey, {
-                challenge,
-                counter: 1,
-            });
-            // Challenge should expire after 30m.
-            yield redis.expire(challengekey, 1800);
+            counter = 1;
+            yield (0, pow_1.saveChallenge)(redis, { challenge, challengeKey, counter });
         }
         console.log({ challenge, difficulty: DIFFICULTY });
-        res
-            .status(200)
-            .send({
+        res.status(200).send({
             status: "SUCCESS",
             challenge,
+            counter,
             difficulty: DIFFICULTY,
-            counter: 1,
         });
     }
     catch (err) {
         const message = "Error getting challenge";
         console.error(message, err);
-        res.status(500).send({ status: "ERROR", message });
+        return res.status(500).send({ status: "ERROR", message });
     }
 }));
 app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { address, captchaToken, solution, nonce } = req.body;
     if (!address || !solution || !nonce) {
-        res.status(400).send({
+        return res.status(400).send({
             status: "ERROR",
             message: "'address', 'solution', and 'nonce' fields are required",
         });
-        return;
     }
     if (!(0, Tezos_1.validateAddress)(res, address))
         return;
-    if (!(0, Captcha_1.validateCaptcha)(res, captchaToken))
+    if (!(yield (0, Captcha_1.validateCaptcha)(res, captchaToken)))
         return;
-    const challengeKey = (0, pow_1.getChallengeKey)(address);
-    const { challenge, counter } = yield redis.hGetAll(challengeKey);
-    if (!challenge) {
-        res.status(400).send({ status: "ERROR", message: "No challenge found" });
-        return;
-    }
-    // Validate the solution by checking that the SHA-256 hash of the challenge concatenated with the nonce
-    // starts with a certain number of zeroes (the difficulty)
-    const isValidSolution = (0, pow_1.verifySolution)({
-        challenge,
-        difficulty: DIFFICULTY,
-        nonce,
-        solution,
-    });
-    console.log({ address, solution, nonce, counter });
-    if (!isValidSolution) {
-        res.status(400).send({ status: "ERROR", message: "Incorrect solution" });
-        return;
-    }
     try {
-        const challengeCounter = Number(counter);
-        if (challengeCounter < CHALLENGES_NEEDED) {
-            console.log(`GETTING CHALLENGE ${challengeCounter}`);
+        const challengeKey = (0, pow_1.getChallengeKey)(address);
+        const { challenge, counter } = yield (0, pow_1.getChallenge)(redis, challengeKey);
+        if (!challenge || !counter) {
+            return res
+                .status(400)
+                .send({ status: "ERROR", message: "No challenge found" });
+        }
+        // Validate the solution by checking that the SHA-256 hash of the challenge concatenated with the nonce
+        // starts with a certain number of zeroes (the difficulty)
+        const isValidSolution = (0, pow_1.verifySolution)({
+            challenge,
+            difficulty: DIFFICULTY,
+            nonce,
+            solution,
+        });
+        console.log({ address, solution, nonce, counter });
+        if (!isValidSolution) {
+            return res
+                .status(400)
+                .send({ status: "ERROR", message: "Incorrect solution" });
+        }
+        if (counter < CHALLENGES_NEEDED) {
+            console.log(`GETTING CHALLENGE ${counter}`);
             const newChallenge = (0, pow_1.generateChallenge)();
-            const incrCounter = challengeCounter + 1;
-            yield redis.hSet(challengeKey, {
+            const incrCounter = counter + 1;
+            yield (0, pow_1.saveChallenge)(redis, {
                 challenge: newChallenge,
+                challengeKey,
                 counter: incrCounter,
             });
-            res
-                .status(200)
-                .send({
+            return res.status(200).send({
                 status: "SUCCESS",
                 challenge: newChallenge,
-                difficulty: DIFFICULTY,
                 counter: incrCounter,
+                difficulty: DIFFICULTY,
             });
-            return;
         }
         // Here is where you would send the tez to the user's address
         // For the sake of this example, we're just logging the address
@@ -172,10 +163,13 @@ app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         b.txHash = "hash";
         res.status(200).send(Object.assign(Object.assign({}, b), { status: "SUCCESS", message: "Tez sent" }));
         yield redis.del(challengeKey).catch((e) => console.error(e.message));
+        return;
     }
     catch (err) {
         console.error(err.message);
-        res.status(500).send({ status: "ERROR", message: "An error occurred" });
+        return res
+            .status(500)
+            .send({ status: "ERROR", message: "An error occurred" });
     }
 }));
 const port = process.env.API_PORT || 3000;

@@ -19,7 +19,7 @@ exports.defaultUserAmount = 1;
 exports.defaultBakerAmount = 6000;
 const getTezAmountForProfile = (profile) => {
     let amount = 0;
-    switch (profile) {
+    switch (profile.toUpperCase()) {
         case Types_1.Profile.USER:
             amount = process.env.FAUCET_AMOUNT_USER || exports.defaultUserAmount;
             break;
@@ -27,7 +27,7 @@ const getTezAmountForProfile = (profile) => {
             amount = process.env.FAUCET_AMOUNT_BAKER || exports.defaultBakerAmount;
             break;
         default:
-            throw new Error(`Unknown profile ${profile}`);
+            throw new Error(`Unknown profile '${profile}'`);
     }
     return amount;
 };

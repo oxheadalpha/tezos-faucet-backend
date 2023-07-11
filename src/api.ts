@@ -13,7 +13,13 @@ import {
   validateAddress,
 } from "./Tezos"
 import { InfoResponseBody, Profile, RequestBody, ResponseBody } from "./Types"
-import { generateChallenge, getChallengeKey, verifySolution } from "./pow"
+import {
+  generateChallenge,
+  getChallengeKey,
+  saveChallenge,
+  getChallenge,
+  verifySolution,
+} from "./pow"
 
 dotenv.config()
 
@@ -21,7 +27,7 @@ const redis = createClient({
   // url: "redis://localhost:6379",
 }) // reject
 
-redis.on("error", (err) => console.log("Redis Client Error", err))
+redis.on("error", (err: any) => console.log("Redis Client Error", err))
 
 const app: Express = express()
 app.use(bodyParser.json())
@@ -67,55 +73,49 @@ app.get("/info", (_, res: Response) => {
   }
 })
 
-const DIFFICULTY = 3
+const DIFFICULTY = 4
 const CHALLENGES_NEEDED = 4
 
 app.post("/challenge", async (req: Request, res: Response) => {
   const { address, captchaToken, profile } = req.body
 
   if (!address || !profile) {
-    res.status(400).send("'address' and 'profile' fields are required")
-    return
+    return res.status(400).send({
+      satus: "ERROR",
+      message: "'address' and 'profile' fields are required",
+    })
   }
 
   if (!validateAddress(res, address)) return
-  if (!validateCaptcha(res, captchaToken)) return
+  // if (!(await validateCaptcha(res, captchaToken))) return
 
   try {
     getTezAmountForProfile(profile)
   } catch (e: any) {
-    res.status(400).send({ status: "ERROR", message: e.message })
-    return
+    return res.status(400).send({ status: "ERROR", message: e.message })
   }
 
   try {
-    const challengekey = `address:${address}`
-    let challenge = await redis.hGet(challengekey, "challenge")
+    const challengeKey = getChallengeKey(address)
+    let { challenge, counter } = await getChallenge(redis, challengeKey)
 
     if (!challenge) {
       challenge = generateChallenge()
-      // Set the challenge and challenge counter.
-      await redis.hSet(challengekey, {
-        challenge,
-        counter: 1,
-      })
-      // Challenge should expire after 30m.
-      await redis.expire(challengekey, 1800)
+      counter = 1
+      await saveChallenge(redis, { challenge, challengeKey, counter })
     }
 
     console.log({ challenge, difficulty: DIFFICULTY })
-    res
-      .status(200)
-      .send({
-        status: "SUCCESS",
-        challenge,
-        difficulty: DIFFICULTY,
-        counter: 1,
-      })
+    res.status(200).send({
+      status: "SUCCESS",
+      challenge,
+      counter,
+      difficulty: DIFFICULTY,
+    })
   } catch (err: any) {
     const message = "Error getting challenge"
     console.error(message, err)
-    res.status(500).send({ status: "ERROR", message })
+    return res.status(500).send({ status: "ERROR", message })
   }
 })
 
@@ -123,60 +123,58 @@ app.post("/verify", async (req: Request, res: Response) => {
   const { address, captchaToken, solution, nonce } = req.body
 
   if (!address || !solution || !nonce) {
-    res.status(400).send({
+    return res.status(400).send({
       status: "ERROR",
       message: "'address', 'solution', and 'nonce' fields are required",
     })
-    return
   }
 
   if (!validateAddress(res, address)) return
-  if (!validateCaptcha(res, captchaToken)) return
-
-  const challengeKey = getChallengeKey(address)
-
-  const { challenge, counter } = await redis.hGetAll(challengeKey)
-
-  if (!challenge) {
-    res.status(400).send({ status: "ERROR", message: "No challenge found" })
-    return
-  }
-
-  // Validate the solution by checking that the SHA-256 hash of the challenge concatenated with the nonce
-  // starts with a certain number of zeroes (the difficulty)
-  const isValidSolution = verifySolution({
-    challenge,
-    difficulty: DIFFICULTY,
-    nonce,
-    solution,
-  })
-
-  console.log({ address, solution, nonce, counter })
-
-  if (!isValidSolution) {
-    res.status(400).send({ status: "ERROR", message: "Incorrect solution" })
-    return
-  }
+  if (!(await validateCaptcha(res, captchaToken))) return
 
   try {
-    const challengeCounter = Number(counter)
-    if (challengeCounter < CHALLENGES_NEEDED) {
-      console.log(`GETTING CHALLENGE ${challengeCounter}`)
+    const challengeKey = getChallengeKey(address)
+    const { challenge, counter } = await getChallenge(redis, challengeKey)
+
+    if (!challenge || !counter) {
+      return res
+        .status(400)
+        .send({ status: "ERROR", message: "No challenge found" })
+    }
+
+    // Validate the solution by checking that the SHA-256 hash of the challenge concatenated with the nonce
+    // starts with a certain number of zeroes (the difficulty)
+    const isValidSolution = verifySolution({
+      challenge,
+      difficulty: DIFFICULTY,
+      nonce,
+      solution,
+    })
+
+    console.log({ address, solution, nonce, counter })
+
+    if (!isValidSolution) {
+      return res
+        .status(400)
+        .send({ status: "ERROR", message: "Incorrect solution" })
+    }
+
+    if (counter < CHALLENGES_NEEDED) {
+      console.log(`GETTING CHALLENGE ${counter}`)
       const newChallenge = generateChallenge()
-      const incrCounter = challengeCounter + 1
-      await redis.hSet(challengeKey, {
+      const incrCounter = counter + 1
+      await saveChallenge(redis, {
         challenge: newChallenge,
+        challengeKey,
         counter: incrCounter,
       })
-      res
-        .status(200)
-        .send({
-          status: "SUCCESS",
-          challenge: newChallenge,
-          difficulty: DIFFICULTY,
-          counter: incrCounter,
-        })
-      return
+
+      return res.status(200).send({
+        status: "SUCCESS",
+        challenge: newChallenge,
+        counter: incrCounter,
+        difficulty: DIFFICULTY,
+      })
     }
 
     // Here is where you would send the tez to the user's address
@@ -189,9 +187,12 @@ app.post("/verify", async (req: Request, res: Response) => {
     res.status(200).send({ ...b, status: "SUCCESS", message: "Tez sent" })
 
     await redis.del(challengeKey).catch((e) => console.error(e.message))
+    return
   } catch (err: any) {
     console.error(err.message)
-    res.status(500).send({ status: "ERROR", message: "An error occurred" })
+    return res
+      .status(500)
+      .send({ status: "ERROR", message: "An error occurred" })
   }
 })
 
