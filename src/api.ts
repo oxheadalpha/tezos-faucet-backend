@@ -182,6 +182,14 @@ app.post("/verify", async (req: Request, res: Response) => {
       })
     }
 
+    // The challenge should be deleted from redis before Tez is sent. If it
+    // failed to delete, the user could keep getting Tez with the same solution.
+    await redis.del(challengeKey).catch((e) => {
+      console.error(`Redis failed to delete ${challengeKey}.`)
+      throw e
+    })
+
+
     // Here is where you would send the tez to the user's address
     // For the sake of this example, we're just logging the address
     console.log(`Send tez to ${address}`)
@@ -189,10 +197,9 @@ app.post("/verify", async (req: Request, res: Response) => {
     const b: any = {}
     // b.txHash = await send(amount, address)
     b.txHash = "hash"
-    res.status(200).send({ ...b, status: "SUCCESS", message: "Tez sent" })
-
-    await redis.del(challengeKey).catch((e) => console.error(e.message))
-    return
+    return res
+      .status(200)
+      .send({ ...b, status: "SUCCESS", message: "Tez sent" })
   } catch (err: any) {
     console.error(err.message)
     return res

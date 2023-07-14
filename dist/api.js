@@ -160,6 +160,12 @@ app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
                 difficulty: DIFFICULTY,
             });
         }
+        // The challenge should be deleted from redis before Tez is sent. If it
+        // failed to delete, the user could keep getting Tez with the same solution.
+        yield exports.redis.del(challengeKey).catch((e) => {
+            console.error(`Redis failed to delete ${challengeKey}.`);
+            throw e;
+        });
         // Here is where you would send the tez to the user's address
         // For the sake of this example, we're just logging the address
         console.log(`Send tez to ${address}`);
@@ -167,9 +173,9 @@ app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         const b = {};
         // b.txHash = await send(amount, address)
         b.txHash = "hash";
-        res.status(200).send(Object.assign(Object.assign({}, b), { status: "SUCCESS", message: "Tez sent" }));
-        yield exports.redis.del(challengeKey).catch((e) => console.error(e.message));
-        return;
+        return res
+            .status(200)
+            .send(Object.assign(Object.assign({}, b), { status: "SUCCESS", message: "Tez sent" }));
     }
     catch (err) {
         console.error(err.message);
