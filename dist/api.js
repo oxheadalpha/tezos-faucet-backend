@@ -12,6 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.redis = void 0;
 const body_parser_1 = __importDefault(require("body-parser"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const express_1 = __importDefault(require("express"));
@@ -22,10 +23,10 @@ const Tezos_1 = require("./Tezos");
 const Types_1 = require("./Types");
 const pow_1 = require("./pow");
 dotenv_1.default.config();
-const redis = (0, redis_1.createClient)({
+exports.redis = (0, redis_1.createClient)({
 // url: "redis://localhost:6379",
-}); // reject
-redis.on("error", (err) => console.log("Redis Client Error", err));
+});
+exports.redis.on("error", (err) => console.log("Redis Client Error", err));
 const app = (0, express_1.default)();
 app.use(body_parser_1.default.json());
 app.use(body_parser_1.default.urlencoded({ extended: true }));
@@ -75,7 +76,8 @@ app.post("/challenge", (req, res) => __awaiter(void 0, void 0, void 0, function*
     }
     if (!(0, Tezos_1.validateAddress)(res, address))
         return;
-    // if (!(await validateCaptcha(res, captchaToken))) return
+    if (captchaToken && !(yield (0, Captcha_1.validateCaptcha)(res, captchaToken)))
+        return;
     try {
         (0, Tezos_1.getTezAmountForProfile)(profile);
     }
@@ -84,14 +86,20 @@ app.post("/challenge", (req, res) => __awaiter(void 0, void 0, void 0, function*
     }
     try {
         const challengeKey = (0, pow_1.getChallengeKey)(address);
-        let { challenge, counter } = yield (0, pow_1.getChallenge)(redis, challengeKey);
+        let { challenge, counter } = yield (0, pow_1.getChallenge)(challengeKey);
         if (!challenge) {
             challenge = (0, pow_1.generateChallenge)();
             counter = 1;
-            yield (0, pow_1.saveChallenge)(redis, { challenge, challengeKey, counter });
+            yield (0, pow_1.saveChallenge)({
+                challenge,
+                challengeKey,
+                counter,
+                // If a captcha was sent it was validated above.
+                usedCaptcha: !!captchaToken,
+            });
         }
         console.log({ challenge, difficulty: DIFFICULTY });
-        res.status(200).send({
+        return res.status(200).send({
             status: "SUCCESS",
             challenge,
             counter,
@@ -105,7 +113,7 @@ app.post("/challenge", (req, res) => __awaiter(void 0, void 0, void 0, function*
     }
 }));
 app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { address, captchaToken, solution, nonce } = req.body;
+    const { address, captchaToken, solution, nonce, profile } = req.body;
     if (!address || !solution || !nonce) {
         return res.status(400).send({
             status: "ERROR",
@@ -114,11 +122,9 @@ app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     }
     if (!(0, Tezos_1.validateAddress)(res, address))
         return;
-    if (!(yield (0, Captcha_1.validateCaptcha)(res, captchaToken)))
-        return;
     try {
         const challengeKey = (0, pow_1.getChallengeKey)(address);
-        const { challenge, counter } = yield (0, pow_1.getChallenge)(redis, challengeKey);
+        const { challenge, counter, usedCaptcha } = yield (0, pow_1.getChallenge)(challengeKey);
         if (!challenge || !counter) {
             return res
                 .status(400)
@@ -142,7 +148,7 @@ app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
             console.log(`GETTING CHALLENGE ${counter}`);
             const newChallenge = (0, pow_1.generateChallenge)();
             const incrCounter = counter + 1;
-            yield (0, pow_1.saveChallenge)(redis, {
+            yield (0, pow_1.saveChallenge)({
                 challenge: newChallenge,
                 challengeKey,
                 counter: incrCounter,
@@ -162,7 +168,7 @@ app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         // b.txHash = await send(amount, address)
         b.txHash = "hash";
         res.status(200).send(Object.assign(Object.assign({}, b), { status: "SUCCESS", message: "Tez sent" }));
-        yield redis.del(challengeKey).catch((e) => console.error(e.message));
+        yield exports.redis.del(challengeKey).catch((e) => console.error(e.message));
         return;
     }
     catch (err) {
@@ -174,9 +180,9 @@ app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
 }));
 const port = process.env.API_PORT || 3000;
 (() => __awaiter(void 0, void 0, void 0, function* () {
-    app.listen(port, () => __awaiter(void 0, void 0, void 0, function* () {
-        console.log(`Start API on port ${port}.`);
-    }));
-    yield redis.connect();
+    yield exports.redis.connect();
     console.log("Connected to redis.");
+    app.listen(port, () => {
+        console.log(`Start API on port ${port}.`);
+    });
 }))();

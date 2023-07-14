@@ -11,22 +11,25 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.verifySolution = exports.getChallenge = exports.saveChallenge = exports.generateChallenge = exports.getChallengeKey = void 0;
 const crypto_1 = require("crypto");
+const api_1 = require("./api");
 const getChallengeKey = (address) => `address:${address}`;
 exports.getChallengeKey = getChallengeKey;
 const generateChallenge = (bytesSize = 32) => (0, crypto_1.randomBytes)(bytesSize).toString("hex");
 exports.generateChallenge = generateChallenge;
-const saveChallenge = (redis, { challenge, challengeKey, counter, expiration = 1800, // 30m
- }) => __awaiter(void 0, void 0, void 0, function* () {
-    yield redis.hSet(challengeKey, {
-        challenge,
-        counter,
-    });
-    yield redis.expire(challengeKey, expiration);
+const saveChallenge = ({ challenge, challengeKey, counter, expiration = 1800, // 30m
+usedCaptcha, }) => __awaiter(void 0, void 0, void 0, function* () {
+    yield api_1.redis.hSet(challengeKey, Object.assign({ challenge,
+        counter }, (typeof usedCaptcha === "boolean" && {
+        usedCaptcha: String(usedCaptcha),
+    })));
+    yield api_1.redis.expire(challengeKey, expiration);
 });
 exports.saveChallenge = saveChallenge;
-const getChallenge = (redis, challengeKey) => __awaiter(void 0, void 0, void 0, function* () {
-    const data = yield redis.hGetAll(challengeKey);
-    return Object.assign(Object.assign({}, data), (data.counter && { counter: Number(data.counter) }));
+const getChallenge = (challengeKey) => __awaiter(void 0, void 0, void 0, function* () {
+    const data = yield api_1.redis.hGetAll(challengeKey);
+    if (!Object.keys(data).length)
+        return {};
+    return Object.assign(Object.assign({}, data), { counter: Number(data.counter), usedCaptcha: data.usedCaptcha === "true" });
 });
 exports.getChallenge = getChallenge;
 const getSolution = (challenge, nonce) => (0, crypto_1.createHash)("sha256").update(`${challenge}:${nonce}`).digest("hex");

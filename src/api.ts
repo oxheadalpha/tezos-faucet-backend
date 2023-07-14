@@ -23,9 +23,9 @@ import {
 
 dotenv.config()
 
-const redis = createClient({
+export const redis = createClient({
   // url: "redis://localhost:6379",
-}) // reject
+})
 
 redis.on("error", (err: any) => console.log("Redis Client Error", err))
 
@@ -35,7 +35,7 @@ app.use(bodyParser.urlencoded({ extended: true }))
 app.use(morgan("dev"))
 
 app.use((_, res: Response, next) => {
-  const cors: string = process.env.AUTHORIZED_HOST || "*"
+  const cors = process.env.AUTHORIZED_HOST || "*"
   res.setHeader("Access-Control-Allow-Origin", cors)
   res.setHeader("Access-Control-Allow-Methods", "GET, POST")
   res.setHeader(
@@ -87,7 +87,7 @@ app.post("/challenge", async (req: Request, res: Response) => {
   }
 
   if (!validateAddress(res, address)) return
-  // if (!(await validateCaptcha(res, captchaToken))) return
+  if (captchaToken && !(await validateCaptcha(res, captchaToken))) return
 
   try {
     getTezAmountForProfile(profile)
@@ -97,16 +97,22 @@ app.post("/challenge", async (req: Request, res: Response) => {
 
   try {
     const challengeKey = getChallengeKey(address)
-    let { challenge, counter } = await getChallenge(redis, challengeKey)
+    let { challenge, counter } = await getChallenge(challengeKey)
 
     if (!challenge) {
       challenge = generateChallenge()
       counter = 1
-      await saveChallenge(redis, { challenge, challengeKey, counter })
+      await saveChallenge({
+        challenge,
+        challengeKey,
+        counter,
+        // If a captcha was sent it was validated above.
+        usedCaptcha: !!captchaToken,
+      })
     }
 
     console.log({ challenge, difficulty: DIFFICULTY })
-    res.status(200).send({
+    return res.status(200).send({
       status: "SUCCESS",
       challenge,
       counter,
@@ -120,7 +126,7 @@ app.post("/challenge", async (req: Request, res: Response) => {
 })
 
 app.post("/verify", async (req: Request, res: Response) => {
-  const { address, captchaToken, solution, nonce } = req.body
+  const { address, captchaToken, solution, nonce, profile } = req.body
 
   if (!address || !solution || !nonce) {
     return res.status(400).send({
@@ -130,11 +136,10 @@ app.post("/verify", async (req: Request, res: Response) => {
   }
 
   if (!validateAddress(res, address)) return
-  if (!(await validateCaptcha(res, captchaToken))) return
 
   try {
     const challengeKey = getChallengeKey(address)
-    const { challenge, counter } = await getChallenge(redis, challengeKey)
+    const { challenge, counter, usedCaptcha } = await getChallenge(challengeKey)
 
     if (!challenge || !counter) {
       return res
@@ -163,7 +168,7 @@ app.post("/verify", async (req: Request, res: Response) => {
       console.log(`GETTING CHALLENGE ${counter}`)
       const newChallenge = generateChallenge()
       const incrCounter = counter + 1
-      await saveChallenge(redis, {
+      await saveChallenge({
         challenge: newChallenge,
         challengeKey,
         counter: incrCounter,
@@ -199,10 +204,10 @@ app.post("/verify", async (req: Request, res: Response) => {
 const port: number = process.env.API_PORT || 3000
 
 ;(async () => {
-  app.listen(port, async () => {
-    console.log(`Start API on port ${port}.`)
-  })
-
   await redis.connect()
   console.log("Connected to redis.")
+
+  app.listen(port, () => {
+    console.log(`Start API on port ${port}.`)
+  })
 })()
