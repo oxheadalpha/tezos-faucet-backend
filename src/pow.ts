@@ -3,12 +3,26 @@ import { redis } from "./api"
 
 export const getChallengeKey = (address: string): string => `address:${address}`
 
-export const generateChallenge = (bytesSize: number = 32) =>
+
+const determineDifficulty = () => {
+  const challengeSize = 32
+  const difficulty = 4
+  return { challengeSize, difficulty }
+}
+
+const generateChallenge = (bytesSize: number = 32) =>
   randomBytes(bytesSize).toString("hex")
+
+export const createChallenge = () => {
+  const { challengeSize, difficulty } = determineDifficulty()
+  const challenge = generateChallenge(challengeSize)
+  return { challenge, difficulty }
+}
 
 interface Challenge {
   challenge: string
   counter: number
+  difficulty: number
   usedCaptcha: boolean
 }
 
@@ -22,12 +36,14 @@ export const saveChallenge = async ({
   challenge,
   challengeKey,
   counter,
+  difficulty,
   expiration = 1800, // 30m
   usedCaptcha,
 }: SaveChallengeArgs) => {
   await redis.hSet(challengeKey, {
     challenge,
     counter,
+    difficulty,
     ...(typeof usedCaptcha === "boolean" && {
       usedCaptcha: String(usedCaptcha),
     }),
@@ -37,16 +53,17 @@ export const saveChallenge = async ({
 
 export const getChallenge = async (
   challengeKey: string
-): Promise<Partial<Challenge>> => {
+): Promise<Challenge | null> => {
   const data = await redis.hGetAll(challengeKey)
 
-  if (!Object.keys(data).length) return {}
+  if (!Object.keys(data).length) return null
 
   return {
     ...data,
     counter: Number(data.counter),
+    difficulty: Number(data.difficulty),
     usedCaptcha: data.usedCaptcha === "true",
-  }
+  } as Challenge
 }
 
 const getSolution = (challenge: string, nonce: number) =>

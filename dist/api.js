@@ -25,8 +25,7 @@ const pow_1 = require("./pow");
 dotenv_1.default.config();
 exports.redis = (0, redis_1.createClient)({
 // url: "redis://localhost:6379",
-});
-exports.redis.on("error", (err) => console.log("Redis Client Error", err));
+}).on("error", (err) => console.log("Redis Client Error", err));
 const app = (0, express_1.default)();
 app.use(body_parser_1.default.json());
 app.use(body_parser_1.default.urlencoded({ extended: true }));
@@ -64,7 +63,6 @@ app.get("/info", (_, res) => {
         res.status(500).send({ status: "ERROR", message: "An exception occurred" });
     }
 });
-const DIFFICULTY = 4;
 const CHALLENGES_NEEDED = 4;
 app.post("/challenge", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { address, captchaToken, profile } = req.body;
@@ -86,24 +84,26 @@ app.post("/challenge", (req, res) => __awaiter(void 0, void 0, void 0, function*
     }
     try {
         const challengeKey = (0, pow_1.getChallengeKey)(address);
-        let { challenge, counter } = yield (0, pow_1.getChallenge)(challengeKey);
+        let { challenge, counter, difficulty } = (yield (0, pow_1.getChallenge)(challengeKey)) || {};
         if (!challenge) {
-            challenge = (0, pow_1.generateChallenge)();
+            ;
+            ({ challenge, difficulty } = (0, pow_1.createChallenge)());
             counter = 1;
             yield (0, pow_1.saveChallenge)({
                 challenge,
                 challengeKey,
                 counter,
+                difficulty,
                 // If a captcha was sent it was validated above.
                 usedCaptcha: !!captchaToken,
             });
         }
-        console.log({ challenge, difficulty: DIFFICULTY });
+        console.log({ challenge, difficulty });
         return res.status(200).send({
             status: "SUCCESS",
             challenge,
             counter,
-            difficulty: DIFFICULTY,
+            difficulty,
         });
     }
     catch (err) {
@@ -113,7 +113,7 @@ app.post("/challenge", (req, res) => __awaiter(void 0, void 0, void 0, function*
     }
 }));
 app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { address, captchaToken, solution, nonce, profile } = req.body;
+    const { address, solution, nonce, profile } = req.body;
     if (!address || !solution || !nonce) {
         return res.status(400).send({
             status: "ERROR",
@@ -124,17 +124,18 @@ app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         return;
     try {
         const challengeKey = (0, pow_1.getChallengeKey)(address);
-        const { challenge, counter, usedCaptcha } = yield (0, pow_1.getChallenge)(challengeKey);
-        if (!challenge || !counter) {
+        const redisChallenge = yield (0, pow_1.getChallenge)(challengeKey);
+        if (!redisChallenge) {
             return res
                 .status(400)
                 .send({ status: "ERROR", message: "No challenge found" });
         }
+        const { challenge, counter, difficulty, usedCaptcha } = redisChallenge;
         // Validate the solution by checking that the SHA-256 hash of the challenge concatenated with the nonce
         // starts with a certain number of zeroes (the difficulty)
         const isValidSolution = (0, pow_1.verifySolution)({
             challenge,
-            difficulty: DIFFICULTY,
+            difficulty,
             nonce,
             solution,
         });
@@ -146,19 +147,14 @@ app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         }
         if (counter < CHALLENGES_NEEDED) {
             console.log(`GETTING CHALLENGE ${counter}`);
-            const newChallenge = (0, pow_1.generateChallenge)();
-            const incrCounter = counter + 1;
-            yield (0, pow_1.saveChallenge)({
-                challenge: newChallenge,
-                challengeKey,
-                counter: incrCounter,
-            });
-            return res.status(200).send({
-                status: "SUCCESS",
-                challenge: newChallenge,
-                counter: incrCounter,
-                difficulty: DIFFICULTY,
-            });
+            const newChallenge = (0, pow_1.createChallenge)();
+            const state = {
+                challenge: newChallenge.challenge,
+                counter: counter + 1,
+                difficulty: newChallenge.difficulty,
+            };
+            yield (0, pow_1.saveChallenge)(Object.assign({ challengeKey }, state));
+            return res.status(200).send(Object.assign({ status: "SUCCESS" }, state));
         }
         // The challenge should be deleted from redis before Tez is sent. If it
         // failed to delete, the user could keep getting Tez with the same solution.

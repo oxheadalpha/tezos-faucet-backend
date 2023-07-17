@@ -14,7 +14,7 @@ import {
 } from "./Tezos"
 import { InfoResponseBody, Profile, RequestBody, ResponseBody } from "./Types"
 import {
-  generateChallenge,
+  createChallenge,
   getChallengeKey,
   saveChallenge,
   getChallenge,
@@ -25,9 +25,7 @@ dotenv.config()
 
 export const redis = createClient({
   // url: "redis://localhost:6379",
-})
-
-redis.on("error", (err: any) => console.log("Redis Client Error", err))
+}).on("error", (err: any) => console.log("Redis Client Error", err))
 
 const app: Express = express()
 app.use(bodyParser.json())
@@ -73,7 +71,6 @@ app.get("/info", (_, res: Response) => {
   }
 })
 
-const DIFFICULTY = 4
 const CHALLENGES_NEEDED = 4
 
 app.post("/challenge", async (req: Request, res: Response) => {
@@ -97,26 +94,29 @@ app.post("/challenge", async (req: Request, res: Response) => {
 
   try {
     const challengeKey = getChallengeKey(address)
-    let { challenge, counter } = await getChallenge(challengeKey)
+    let { challenge, counter, difficulty } =
+      (await getChallenge(challengeKey)) || {}
 
     if (!challenge) {
-      challenge = generateChallenge()
+      ;({ challenge, difficulty } = createChallenge())
       counter = 1
       await saveChallenge({
         challenge,
         challengeKey,
         counter,
+        difficulty,
         // If a captcha was sent it was validated above.
         usedCaptcha: !!captchaToken,
       })
     }
 
-    console.log({ challenge, difficulty: DIFFICULTY })
+    console.log({ challenge, difficulty })
+
     return res.status(200).send({
       status: "SUCCESS",
       challenge,
       counter,
-      difficulty: DIFFICULTY,
+      difficulty,
     })
   } catch (err: any) {
     const message = "Error getting challenge"
@@ -126,7 +126,7 @@ app.post("/challenge", async (req: Request, res: Response) => {
 })
 
 app.post("/verify", async (req: Request, res: Response) => {
-  const { address, captchaToken, solution, nonce, profile } = req.body
+  const { address, solution, nonce, profile } = req.body
 
   if (!address || !solution || !nonce) {
     return res.status(400).send({
@@ -139,19 +139,19 @@ app.post("/verify", async (req: Request, res: Response) => {
 
   try {
     const challengeKey = getChallengeKey(address)
-    const { challenge, counter, usedCaptcha } = await getChallenge(challengeKey)
-
-    if (!challenge || !counter) {
+    const redisChallenge = await getChallenge(challengeKey)
+    if (!redisChallenge) {
       return res
         .status(400)
         .send({ status: "ERROR", message: "No challenge found" })
     }
 
+    const { challenge, counter, difficulty, usedCaptcha } = redisChallenge
     // Validate the solution by checking that the SHA-256 hash of the challenge concatenated with the nonce
     // starts with a certain number of zeroes (the difficulty)
     const isValidSolution = verifySolution({
       challenge,
-      difficulty: DIFFICULTY,
+      difficulty,
       nonce,
       solution,
     })
@@ -166,20 +166,15 @@ app.post("/verify", async (req: Request, res: Response) => {
 
     if (counter < CHALLENGES_NEEDED) {
       console.log(`GETTING CHALLENGE ${counter}`)
-      const newChallenge = generateChallenge()
-      const incrCounter = counter + 1
-      await saveChallenge({
-        challenge: newChallenge,
-        challengeKey,
-        counter: incrCounter,
-      })
+      const newChallenge = createChallenge()
+      const state = {
+        challenge: newChallenge.challenge,
+        counter: counter + 1,
+        difficulty: newChallenge.difficulty,
+      }
 
-      return res.status(200).send({
-        status: "SUCCESS",
-        challenge: newChallenge,
-        counter: incrCounter,
-        difficulty: DIFFICULTY,
-      })
+      await saveChallenge({ challengeKey, ...state })
+      return res.status(200).send({ status: "SUCCESS", ...state })
     }
 
     // The challenge should be deleted from redis before Tez is sent. If it
