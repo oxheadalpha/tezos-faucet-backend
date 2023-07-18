@@ -26,17 +26,17 @@ const api_1 = require("./api");
 const getChallengeKey = (address) => `address:${address}`;
 exports.getChallengeKey = getChallengeKey;
 // TODO: Implement
-const determineDifficulty = () => {
+const determineDifficulty = (usedCaptcha) => {
     const challengeSize = 32;
-    const difficulty = 4;
+    const difficulty = usedCaptcha ? 4 : 5;
     return { challengeSize, difficulty };
 };
 // TODO: Implement
-const determineChallengesNeeded = (usedCaptcha) => usedCaptcha ? 2 : 4;
+const determineChallengesNeeded = (usedCaptcha) => usedCaptcha ? 5 : 6;
 const generateChallenge = (bytesSize = 32) => (0, crypto_1.randomBytes)(bytesSize).toString("hex");
 const createChallenge = (usedCaptcha) => {
-    const { challengeSize, difficulty } = determineDifficulty();
     const challengesNeeded = determineChallengesNeeded(usedCaptcha);
+    const { challengeSize, difficulty } = determineDifficulty(usedCaptcha);
     const challenge = generateChallenge(challengeSize);
     return { challenge, challengesNeeded, difficulty };
 };
@@ -54,7 +54,7 @@ const getChallenge = (challengeKey) => __awaiter(void 0, void 0, void 0, functio
     const data = yield api_1.redis.hGetAll(challengeKey);
     if (!Object.keys(data).length)
         return null;
-    return Object.assign(Object.assign({}, data), { challengesNeeded: Number(data.challengesNeeded), counter: Number(data.counter), difficulty: Number(data.difficulty), usedCaptcha: data.usedCaptcha === "true" });
+    return Object.assign(Object.assign({}, data), { challengeCounter: Number(data.challengeCounter), challengesNeeded: Number(data.challengesNeeded), difficulty: Number(data.difficulty), usedCaptcha: data.usedCaptcha === "true" });
 });
 exports.getChallenge = getChallenge;
 const getSolution = (challenge, nonce) => (0, crypto_1.createHash)("sha256").update(`${challenge}:${nonce}`).digest("hex");

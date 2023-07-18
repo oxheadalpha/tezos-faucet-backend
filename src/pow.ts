@@ -4,35 +4,35 @@ import { redis } from "./api"
 export const getChallengeKey = (address: string): string => `address:${address}`
 
 // TODO: Implement
-const determineDifficulty = () => {
+const determineDifficulty = (usedCaptcha: boolean) => {
   const challengeSize = 32
-  const difficulty = 4
+  const difficulty = usedCaptcha ? 4 : 5
   return { challengeSize, difficulty }
 }
 
 // TODO: Implement
 const determineChallengesNeeded = (usedCaptcha: boolean) =>
-  usedCaptcha ? 2 : 4
+  usedCaptcha ? 5 : 6
 
 const generateChallenge = (bytesSize: number = 32) =>
   randomBytes(bytesSize).toString("hex")
 
 export const createChallenge = (usedCaptcha: boolean) => {
-  const { challengeSize, difficulty } = determineDifficulty()
   const challengesNeeded = determineChallengesNeeded(usedCaptcha)
+  const { challengeSize, difficulty } = determineDifficulty(usedCaptcha)
   const challenge = generateChallenge(challengeSize)
   return { challenge, challengesNeeded, difficulty }
 }
 
-interface Challenge {
+interface ChallengeState {
   challenge: string
+  challengeCounter: number
   challengesNeeded: number
-  counter: number
   difficulty: number
   usedCaptcha: boolean
 }
 
-type SaveChallengeArgs = Omit<Challenge, "usedCaptcha"> & {
+type SaveChallengeArgs = Omit<ChallengeState, "usedCaptcha"> & {
   usedCaptcha?: boolean
   expiration?: number
 }
@@ -44,7 +44,7 @@ export const saveChallenge = async (
     expiration = 1800, // 30m
     ...args
   }: SaveChallengeArgs
-  ) => {
+) => {
   await redis.hSet(challengeKey, {
     ...args,
     ...(typeof usedCaptcha === "boolean" && {
@@ -56,18 +56,18 @@ export const saveChallenge = async (
 
 export const getChallenge = async (
   challengeKey: string
-): Promise<Challenge | null> => {
+): Promise<ChallengeState | null> => {
   const data = await redis.hGetAll(challengeKey)
 
   if (!Object.keys(data).length) return null
 
   return {
     ...data,
+    challengeCounter: Number(data.challengeCounter),
     challengesNeeded: Number(data.challengesNeeded),
-    counter: Number(data.counter),
     difficulty: Number(data.difficulty),
     usedCaptcha: data.usedCaptcha === "true",
-  } as Challenge
+  } as ChallengeState
 }
 
 const getSolution = (challenge: string, nonce: number) =>

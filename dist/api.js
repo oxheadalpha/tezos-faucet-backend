@@ -83,17 +83,17 @@ app.post("/challenge", (req, res) => __awaiter(void 0, void 0, void 0, function*
     }
     try {
         const challengeKey = (0, pow_1.getChallengeKey)(address);
-        let { challenge, challengesNeeded, counter, difficulty } = (yield (0, pow_1.getChallenge)(challengeKey)) || {};
+        let { challenge, challengesNeeded, challengeCounter, difficulty } = (yield (0, pow_1.getChallenge)(challengeKey)) || {};
         if (!challenge) {
             // If a captcha was sent it was validated above.
             const usedCaptcha = !!captchaToken;
             ({ challenge, challengesNeeded, difficulty } =
                 (0, pow_1.createChallenge)(usedCaptcha));
-            counter = 1;
+            challengeCounter = 1;
             yield (0, pow_1.saveChallenge)(challengeKey, {
                 challenge,
                 challengesNeeded,
-                counter,
+                challengeCounter,
                 difficulty,
                 usedCaptcha,
             });
@@ -102,7 +102,7 @@ app.post("/challenge", (req, res) => __awaiter(void 0, void 0, void 0, function*
         return res.status(200).send({
             status: "SUCCESS",
             challenge,
-            counter,
+            challengeCounter,
             difficulty,
         });
     }
@@ -130,24 +130,24 @@ app.post("/verify", (req, res) => __awaiter(void 0, void 0, void 0, function* ()
                 .status(400)
                 .send({ status: "ERROR", message: "No challenge found" });
         }
-        const { challenge, challengesNeeded, counter, difficulty, usedCaptcha } = redisChallenge;
+        const { challenge, challengesNeeded, challengeCounter, difficulty, usedCaptcha } = redisChallenge;
         const isValidSolution = (0, pow_1.verifySolution)({
             challenge,
             difficulty,
             nonce,
             solution,
         });
-        console.log({ address, solution, nonce, counter });
+        console.log({ address, solution, nonce, challengeCounter });
         if (!isValidSolution) {
             return res
                 .status(400)
                 .send({ status: "ERROR", message: "Incorrect solution" });
         }
-        if (counter < challengesNeeded) {
+        if (challengeCounter < challengesNeeded) {
             const newChallenge = (0, pow_1.createChallenge)(usedCaptcha);
             const resData = {
                 challenge: newChallenge.challenge,
-                counter: counter + 1,
+                challengeCounter: challengeCounter + 1,
                 difficulty: newChallenge.difficulty,
             };
             yield (0, pow_1.saveChallenge)(challengeKey, Object.assign({ challengesNeeded: newChallenge.challengesNeeded }, resData));

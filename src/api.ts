@@ -92,7 +92,7 @@ app.post("/challenge", async (req: Request, res: Response) => {
 
   try {
     const challengeKey = getChallengeKey(address)
-    let { challenge, challengesNeeded, counter, difficulty } =
+    let { challenge, challengesNeeded, challengeCounter, difficulty } =
       (await getChallenge(challengeKey)) || {}
 
     if (!challenge) {
@@ -100,11 +100,11 @@ app.post("/challenge", async (req: Request, res: Response) => {
       const usedCaptcha = !!captchaToken
       ;({ challenge, challengesNeeded, difficulty } =
         createChallenge(usedCaptcha))
-      counter = 1
+      challengeCounter = 1
       await saveChallenge(challengeKey, {
         challenge,
         challengesNeeded,
-        counter,
+        challengeCounter,
         difficulty,
         usedCaptcha,
       })
@@ -115,7 +115,7 @@ app.post("/challenge", async (req: Request, res: Response) => {
     return res.status(200).send({
       status: "SUCCESS",
       challenge,
-      counter,
+      challengeCounter,
       difficulty,
     })
   } catch (err: any) {
@@ -146,7 +146,7 @@ app.post("/verify", async (req: Request, res: Response) => {
         .send({ status: "ERROR", message: "No challenge found" })
     }
 
-    const { challenge, challengesNeeded, counter, difficulty, usedCaptcha } =
+    const { challenge, challengesNeeded, challengeCounter, difficulty, usedCaptcha } =
       redisChallenge
 
     const isValidSolution = verifySolution({
@@ -156,7 +156,7 @@ app.post("/verify", async (req: Request, res: Response) => {
       solution,
     })
 
-    console.log({ address, solution, nonce, counter })
+    console.log({ address, solution, nonce, challengeCounter })
 
     if (!isValidSolution) {
       return res
@@ -164,11 +164,11 @@ app.post("/verify", async (req: Request, res: Response) => {
         .send({ status: "ERROR", message: "Incorrect solution" })
     }
 
-    if (counter < challengesNeeded) {
+    if (challengeCounter < challengesNeeded) {
       const newChallenge = createChallenge(usedCaptcha)
       const resData = {
         challenge: newChallenge.challenge,
-        counter: counter + 1,
+        challengeCounter: challengeCounter + 1,
         difficulty: newChallenge.difficulty,
       }
 
