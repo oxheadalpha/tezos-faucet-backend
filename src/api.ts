@@ -71,8 +71,6 @@ app.get("/info", (_, res: Response) => {
   }
 })
 
-const CHALLENGES_NEEDED = 4
-
 app.post("/challenge", async (req: Request, res: Response) => {
   const { address, captchaToken, profile } = req.body
 
@@ -94,19 +92,21 @@ app.post("/challenge", async (req: Request, res: Response) => {
 
   try {
     const challengeKey = getChallengeKey(address)
-    let { challenge, counter, difficulty } =
+    let { challenge, challengesNeeded, counter, difficulty } =
       (await getChallenge(challengeKey)) || {}
 
     if (!challenge) {
-      ;({ challenge, difficulty } = createChallenge())
+      // If a captcha was sent it was validated above.
+      const usedCaptcha = !!captchaToken
+      ;({ challenge, challengesNeeded, difficulty } =
+        createChallenge(usedCaptcha))
       counter = 1
-      await saveChallenge({
+      await saveChallenge(challengeKey, {
         challenge,
-        challengeKey,
+        challengesNeeded,
         counter,
         difficulty,
-        // If a captcha was sent it was validated above.
-        usedCaptcha: !!captchaToken,
+        usedCaptcha,
       })
     }
 
@@ -146,9 +146,9 @@ app.post("/verify", async (req: Request, res: Response) => {
         .send({ status: "ERROR", message: "No challenge found" })
     }
 
-    const { challenge, counter, difficulty, usedCaptcha } = redisChallenge
-    // Validate the solution by checking that the SHA-256 hash of the challenge concatenated with the nonce
-    // starts with a certain number of zeroes (the difficulty)
+    const { challenge, challengesNeeded, counter, difficulty, usedCaptcha } =
+      redisChallenge
+
     const isValidSolution = verifySolution({
       challenge,
       difficulty,
@@ -164,17 +164,19 @@ app.post("/verify", async (req: Request, res: Response) => {
         .send({ status: "ERROR", message: "Incorrect solution" })
     }
 
-    if (counter < CHALLENGES_NEEDED) {
-      console.log(`GETTING CHALLENGE ${counter}`)
-      const newChallenge = createChallenge()
-      const state = {
+    if (counter < challengesNeeded) {
+      const newChallenge = createChallenge(usedCaptcha)
+      const resData = {
         challenge: newChallenge.challenge,
         counter: counter + 1,
         difficulty: newChallenge.difficulty,
       }
 
-      await saveChallenge({ challengeKey, ...state })
-      return res.status(200).send({ status: "SUCCESS", ...state })
+      await saveChallenge(challengeKey, {
+        challengesNeeded: newChallenge.challengesNeeded,
+        ...resData,
+      })
+      return res.status(200).send({ status: "SUCCESS", ...resData })
     }
 
     // The challenge should be deleted from redis before Tez is sent. If it
@@ -183,7 +185,6 @@ app.post("/verify", async (req: Request, res: Response) => {
       console.error(`Redis failed to delete ${challengeKey}.`)
       throw e
     })
-
 
     // Here is where you would send the tez to the user's address
     // For the sake of this example, we're just logging the address
