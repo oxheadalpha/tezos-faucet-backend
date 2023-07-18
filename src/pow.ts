@@ -88,5 +88,5 @@ export const verifySolution = ({
   const hash = getSolution(challenge, nonce)
   // Validate the SHA-256 hash of the challenge concatenated with the nonce
   // starts with a certain number of zeroes (the difficulty).
-  return hash === solution && hash.startsWith("0".repeat(difficulty) + "8")
+  return hash === solution && hash.startsWith("0".repeat(difficulty))
 }
