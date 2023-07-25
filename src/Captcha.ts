@@ -15,7 +15,7 @@ const checkCaptcha = async (responseToken: string) => {
 
   const secret = process.env.FAUCET_CAPTCHA_SECRET
 
-  const captchaURL = `https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${responseToken}`
+  const captchaURL = `https://google.com/recaptcha/api/siteverify?secret=${secret}&response=${responseToken}`
 
   const res = await axios.post(captchaURL)
   return res.data
