@@ -129,14 +129,23 @@ app.post("/challenge", async (req: Request, res: Response) => {
 app.post("/verify", async (req: Request, res: Response) => {
   const { address, solution, nonce, profile } = req.body
 
-  if (!address || !solution || !nonce) {
+  if (!address || !solution || !nonce || !profile) {
     return res.status(400).send({
       status: "ERROR",
-      message: "'address', 'solution', and 'nonce' fields are required",
+      message:
+        "'address', 'solution', 'nonce', and 'profile' fields are required",
     })
   }
 
   if (!validateAddress(res, address)) return
+
+  let amount
+
+  try {
+    amount = getTezAmountForProfile(profile)
+  } catch (e: any) {
+    return res.status(400).send({ status: "ERROR", message: e.message })
+  }
 
   try {
     const challengeKey = getChallengeKey(address)
@@ -147,8 +156,13 @@ app.post("/verify", async (req: Request, res: Response) => {
         .send({ status: "ERROR", message: "No challenge found" })
     }
 
-    const { challenge, challengesNeeded, challengeCounter, difficulty, usedCaptcha } =
-      redisChallenge
+    const {
+      challenge,
+      challengesNeeded,
+      challengeCounter,
+      difficulty,
+      usedCaptcha,
+    } = redisChallenge
 
     const isValidSolution = verifySolution({
       challenge,
@@ -189,14 +203,10 @@ app.post("/verify", async (req: Request, res: Response) => {
 
     // Here is where you would send the tez to the user's address
     // For the sake of this example, we're just logging the address
-    console.log(`Send tez to ${address}`)
-    const amount = getTezAmountForProfile("BAKER" as Profile)
-    const b: any = {}
-    // b.txHash = await send(amount, address)
-    b.txHash = "hash"
+    const txHash = await send(amount, address)
     return res
       .status(200)
-      .send({ ...b, status: "SUCCESS", message: "Tez sent" })
+      .send({ txHash, status: "SUCCESS", message: "Tez sent" })
   } catch (err: any) {
     console.error(err.message)
     return res

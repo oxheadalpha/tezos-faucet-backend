@@ -50,7 +50,7 @@ export const send = async (
 
   console.log(`Use ${rpcUrl}`)
 
-  let Tezos: TezosToolkit = new TezosToolkit(rpcUrl)
+  const Tezos: TezosToolkit = new TezosToolkit(rpcUrl)
 
   // Check max balance
   const userBalance: number = (await Tezos.tz.getBalance(address)).toNumber()
@@ -61,8 +61,8 @@ export const send = async (
     throw new Error("You have already enough ꜩ")
   }
 
-  // Build memory signer fro private key
-  const privateKey: string = process.env.FAUCET_PRIVATE_KEY
+  // Build memory signer for private key
+  const privateKey = process.env.FAUCET_PRIVATE_KEY
 
   if (!privateKey) {
     console.log("No private key provided")
