@@ -61,12 +61,13 @@ app.get("/info", (_, res: Response) => {
 
     const info: InfoResponseBody = {
       faucetAddress: process.env.FAUCET_ADDRESS,
-      captchaEnable: JSON.parse(process.env.ENABLE_CAPTCHA),
+      captchaEnable: process.env.ENABLE_CAPTCHA === "true",
       profiles,
       maxBalance: process.env.MAX_BALANCE,
     }
     res.status(200).send(info)
   } catch (error) {
+    console.error(error)
     res.status(500).send({ status: "ERROR", message: "An exception occurred" })
   }
 })
