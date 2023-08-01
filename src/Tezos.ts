@@ -4,12 +4,12 @@ import { validateKeyHash } from "@taquito/utils"
 import { Response } from "express"
 import { Profile } from "./Types"
 
-const defaultMaxBalance: number = 6000
-export const defaultUserAmount: number = 1
-export const defaultBakerAmount: number = 6000
+const defaultMaxBalance = 6000
+export const defaultUserAmount = 1
+export const defaultBakerAmount = 6000
 
 export const getTezAmountForProfile = (profile: Profile) => {
-  let amount: number = 0
+  let amount = 0
 
   switch (profile.toUpperCase()) {
     case Profile.USER:
@@ -35,60 +35,63 @@ export const validateAddress = (res: Response, address: string) => {
   return true
 }
 
+// Setup the TezosToolkit to interact with the chain.
+const Tezos = (() => {
+  const rpcUrl = process.env.RPC_URL
+  if (!rpcUrl) {
+    throw new Error("No RPC_URL defined.")
+  }
+
+  const TezToolkit = new TezosToolkit(rpcUrl)
+
+  const faucetPrivateKey = process.env.FAUCET_PRIVATE_KEY
+  if (!faucetPrivateKey) {
+    throw new Error("No FAUCET_PRIVATE_KEY defined.")
+  }
+
+  // Create signer
+  TezToolkit.setProvider({
+    signer: new InMemorySigner(faucetPrivateKey),
+  })
+
+  return TezToolkit
+})()
+
 export const send = async (
   amount: number,
   address: string
 ): Promise<string> => {
-  console.log(`Send ${amount} xtz to ${address}`)
-  // Connect to RPC endpoint
-  const rpcUrl: string = process.env.RPC_URL
-
-  if (!rpcUrl) {
-    console.log("No RPC URL defined")
-    throw new Error("API error")
-  }
-
-  console.log(`Use ${rpcUrl}`)
-
-  const Tezos: TezosToolkit = new TezosToolkit(rpcUrl)
-
   // Check max balance
-  const userBalance: number = (await Tezos.tz.getBalance(address)).toNumber()
-
-  const maxBalance: number = process.env.MAX_BALANCE || defaultMaxBalance
-  if (userBalance > maxBalance * 1000000) {
-    console.log(`User balance too high (${userBalance / 1000000}), don't send`)
-    throw new Error("You have already enough ꜩ")
-  }
-
-  // Build memory signer for private key
-  const privateKey = process.env.FAUCET_PRIVATE_KEY
-
-  if (!privateKey) {
-    console.log("No private key provided")
-    throw new Error("API error")
-  }
-
-  // Create signer
   try {
-    Tezos.setProvider({
-      signer: await InMemorySigner.fromSecretKey(privateKey),
-    })
+    const userBalance = (await Tezos.tz.getBalance(address)).toNumber()
+    const maxBalance = Number(process.env.MAX_BALANCE || defaultMaxBalance)
+    if (userBalance > maxBalance * 1000000) {
+      console.log(
+        `User balance too high (${userBalance / 1000000}), don't send`
+      )
+      throw new Error("You have already enough ꜩ")
+    }
   } catch (err) {
-    console.log(err)
-    throw new Error("API error")
+    console.error(err)
+    throw new Error(`Error getting ${address} balance.`)
   }
 
   // Create and send transaction
   try {
+    /* Note: `transfer` doesn't work well when running on node v19+. The
+    underlying Axios requests breaks with "ECONNRESET error socket hang up". I
+    believe this is because node v19 sets HTTP(S) `keepAlive` to true by default
+    and the Tezos node ends up killing the long-lived connection. It isn't easy
+    to configure Axios in Taquito to work around this. */
     const operation = await Tezos.contract.transfer({
       to: address,
-      amount: amount,
+      amount,
     })
+    console.log(`Sent ${amount} xtz to ${address}`)
     console.log(`Hash: ${operation.hash}`)
     return operation.hash
   } catch (err) {
-    console.log(err)
+    console.error(`Error sending Tez to ${address}.`)
     throw err
   }
 }
