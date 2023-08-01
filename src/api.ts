@@ -1,5 +1,7 @@
-import bodyParser from "body-parser"
 import dotenv from "dotenv"
+dotenv.config()
+
+import bodyParser from "body-parser"
 import express, { Express, Request, Response } from "express"
 import morgan from "morgan"
 import { createClient } from "redis"
@@ -21,7 +23,6 @@ import {
   verifySolution,
 } from "./pow"
 
-dotenv.config()
 
 export const redis = createClient({
   // url: "redis://localhost:6379",
@@ -208,14 +209,14 @@ app.post("/verify", async (req: Request, res: Response) => {
       .status(200)
       .send({ txHash, status: "SUCCESS", message: "Tez sent" })
   } catch (err: any) {
-    console.error(err.message)
+    console.error(err)
     return res
       .status(500)
       .send({ status: "ERROR", message: "An error occurred" })
   }
 })
 
-const port: number = process.env.API_PORT || 3000
+const port = process.env.API_PORT || 3000
 
 ;(async () => {
   await redis.connect()
