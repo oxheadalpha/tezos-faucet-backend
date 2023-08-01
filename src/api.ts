@@ -6,7 +6,7 @@ import express, { Express, Request, Response } from "express"
 import morgan from "morgan"
 import { createClient } from "redis"
 
-import { validateCaptcha } from "./Captcha"
+import { validateCaptcha, CAPTCHA_ENABLED } from "./Captcha"
 import {
   defaultBakerAmount,
   defaultUserAmount,
@@ -99,7 +99,7 @@ app.post("/challenge", async (req: Request, res: Response) => {
 
     if (!challenge) {
       // If a captcha was sent it was validated above.
-      const usedCaptcha = !!captchaToken
+      const usedCaptcha = CAPTCHA_ENABLED && !!captchaToken
       ;({ challenge, challengesNeeded, difficulty } =
         createChallenge(usedCaptcha))
       challengeCounter = 1
