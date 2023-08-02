@@ -23,8 +23,9 @@ import {
 import { InfoResponseBody, Profile } from "./Types"
 
 export const redis = createClient({
-  // url: "redis://localhost:6379",
-}).on("error", (err: any) => console.log("Redis Client Error", err))
+  url: process.env.REDIS_URL,
+  password: process.env.REDIS_PASSWORD,
+}).on("error", (err: any) => console.log("Redis Client Error:", err))
 
 const app: Express = express()
 app.use(bodyParser.json())
@@ -221,6 +222,6 @@ const port = process.env.API_PORT || 3000
   console.log("Connected to redis.")
 
   app.listen(port, () => {
-    console.log(`Start API on port ${port}.`)
+    console.log(`Listening on port ${port}.`)
   })
 })()
