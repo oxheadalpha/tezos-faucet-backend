@@ -1,31 +1,29 @@
-enum Profile {
-    USER = "USER",
-    BAKER = "BAKER"
+export enum Profile {
+  USER = "USER",
+  BAKER = "BAKER",
 }
 
-type RequestBody = {
-    captchaToken: string;
-    address: string;
-    profile: string;
+export type RequestBody = {
+  captchaToken: string
+  address: string
+  profile: string
 }
 
-type ResponseBody = {
-    status: string;
-    txHash: string | undefined;
-    message: string | undefined;
+export type ResponseBody = {
+  status: string
+  txHash?: string
+  message?: string
 }
 
-type InfoResponseBody = {
-    faucetAddress: string;
-    captchaEnable: boolean;
-    profiles: ProfileInfo;
-    maxBalance: number;
+export type ProfileInfo = {
+  profile: string
+  amount: number
+  currency: string
 }
 
-type ProfileInfo = {
-    profile: string;
-    amount: number;
-    currency: string;
+export type InfoResponseBody = {
+  faucetAddress: string
+  captchaEnabled: boolean
+  profiles: ProfileInfo
+  maxBalance: number
 }
-
-export { Profile, RequestBody, ResponseBody, InfoResponseBody, ProfileInfo };

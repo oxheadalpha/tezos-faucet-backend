@@ -14,14 +14,27 @@ export const validateCaptcha = async (res: Response, captchaToken: string) => {
       throw new Error("Missing captcha token.")
     }
 
-    const captchaURL = `https://google.com/recaptcha/api/siteverify?secret=${process.env.FAUCET_CAPTCHA_SECRET}&response=${captchaToken}`
+    const captchaURL = `https://google.com/recaptcha/api/siteverify`
 
-    const res = (await axios.post(captchaURL)).data
+    const res = (
+      await axios.post(
+        captchaURL,
+        {},
+        {
+          params: {
+            secret: process.env.FAUCET_CAPTCHA_SECRET,
+            response: captchaToken,
+          },
+        }
+      )
+    ).data
+
     if (!res.success) {
       res.status(400).send({ status: "ERROR", message: "Invalid captcha" })
       return false
     }
   } catch (err) {
+    console.error(err)
     res.status(400).send({ status: "ERROR", message: "Captcha error" })
     return false
   }

@@ -8,13 +8,11 @@ import { createClient } from "redis"
 
 import { validateCaptcha, CAPTCHA_ENABLED } from "./Captcha"
 import {
-  defaultBakerAmount,
-  defaultUserAmount,
+  MAX_BALANCE,
   getTezAmountForProfile,
   send,
   validateAddress,
 } from "./Tezos"
-import { InfoResponseBody, Profile, RequestBody, ResponseBody } from "./Types"
 import {
   createChallenge,
   getChallengeKey,
@@ -22,7 +20,7 @@ import {
   getChallenge,
   verifySolution,
 } from "./pow"
-
+import { InfoResponseBody, Profile } from "./Types"
 
 export const redis = createClient({
   // url: "redis://localhost:6379",
@@ -50,21 +48,21 @@ app.get("/info", (_, res: Response) => {
     const profiles: any = {
       user: {
         profile: Profile.USER,
-        amount: process.env.FAUCET_AMOUNT_USER || defaultUserAmount,
+        amount: getTezAmountForProfile(Profile.USER),
         currency: "tez",
       },
       baker: {
         profile: Profile.BAKER,
-        amount: process.env.FAUCET_AMOUNT_BAKER || defaultBakerAmount,
+        amount: getTezAmountForProfile(Profile.BAKER),
         currency: "tez",
       },
     }
 
     const info: InfoResponseBody = {
       faucetAddress: process.env.FAUCET_ADDRESS,
-      captchaEnable: process.env.ENABLE_CAPTCHA === "true",
+      captchaEnabled: CAPTCHA_ENABLED,
+      maxBalance: MAX_BALANCE,
       profiles,
-      maxBalance: process.env.MAX_BALANCE,
     }
     res.status(200).send(info)
   } catch (error) {

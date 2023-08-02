@@ -4,25 +4,26 @@ import { validateKeyHash } from "@taquito/utils"
 import { Response } from "express"
 import { Profile } from "./Types"
 
+const defaultUserAmount = 1
+export const FAUCET_AMOUNT_USER =
+  Number(process.env.FAUCET_AMOUNT_USER) || defaultUserAmount
+
+const defaultBakerAmount = 6000
+export const FAUCET_AMOUNT_BAKER =
+  Number(process.env.FAUCET_AMOUNT_BAKER) || defaultBakerAmount
+
 const defaultMaxBalance = 6000
-export const defaultUserAmount = 1
-export const defaultBakerAmount = 6000
+export const MAX_BALANCE = Number(process.env.MAX_BALANCE) || defaultMaxBalance
 
 export const getTezAmountForProfile = (profile: Profile) => {
-  let amount = 0
-
   switch (profile.toUpperCase()) {
     case Profile.USER:
-      amount = process.env.FAUCET_AMOUNT_USER || defaultUserAmount
-      break
+      return FAUCET_AMOUNT_USER
     case Profile.BAKER:
-      amount = process.env.FAUCET_AMOUNT_BAKER || defaultBakerAmount
-      break
+      return FAUCET_AMOUNT_BAKER
     default:
       throw new Error(`Unknown profile '${profile}'`)
   }
-
-  return amount
 }
 
 export const validateAddress = (res: Response, address: string) => {
@@ -64,8 +65,7 @@ export const send = async (
   // Check max balance
   try {
     const userBalance = (await Tezos.tz.getBalance(address)).toNumber()
-    const maxBalance = Number(process.env.MAX_BALANCE || defaultMaxBalance)
-    if (userBalance > maxBalance * 1000000) {
+    if (userBalance > MAX_BALANCE * 1000000) {
       console.log(
         `User balance too high (${userBalance / 1000000}), don't send`
       )
@@ -79,14 +79,11 @@ export const send = async (
   // Create and send transaction
   try {
     /* Note: `transfer` doesn't work well when running on node v19+. The
-    underlying Axios requests breaks with "ECONNRESET error socket hang up". I
-    believe this is because node v19 sets HTTP(S) `keepAlive` to true by default
+    underlying Axios requests breaks with "ECONNRESET error socket hang up".
+    This is likely because node v19 sets HTTP(S) `keepAlive` to true by default
     and the Tezos node ends up killing the long-lived connection. It isn't easy
     to configure Axios in Taquito to work around this. */
-    const operation = await Tezos.contract.transfer({
-      to: address,
-      amount,
-    })
+    const operation = await Tezos.contract.transfer({ to: address, amount })
     console.log(`Sent ${amount} xtz to ${address}`)
     console.log(`Hash: ${operation.hash}`)
     return operation.hash
