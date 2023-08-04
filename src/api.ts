@@ -3,9 +3,9 @@ dotenv.config()
 
 import bodyParser from "body-parser"
 import express, { Express, Request, Response } from "express"
-import morgan from "morgan"
 import { createClient } from "redis"
 
+import { httpLogger } from "./logging"
 import { validateCaptcha, CAPTCHA_ENABLED } from "./Captcha"
 import {
   MAX_BALANCE,
@@ -30,8 +30,7 @@ export const redis = createClient({
 const app: Express = express()
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
-app.use(morgan("dev"))
-
+app.use(httpLogger)
 app.use((_, res: Response, next) => {
   const cors = process.env.AUTHORIZED_HOST || "*"
   res.setHeader("Access-Control-Allow-Origin", cors)
@@ -111,8 +110,6 @@ app.post("/challenge", async (req: Request, res: Response) => {
       })
     }
 
-    console.log({ challenge, difficulty })
-
     return res.status(200).send({
       status: "SUCCESS",
       challenge,
@@ -170,8 +167,6 @@ app.post("/verify", async (req: Request, res: Response) => {
       nonce,
       solution,
     })
-
-    console.log({ address, solution, nonce, challengeCounter })
 
     if (!isValidSolution) {
       return res

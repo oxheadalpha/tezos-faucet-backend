@@ -84,8 +84,7 @@ export const send = async (
     and the Tezos node ends up killing the long-lived connection. It isn't easy
     to configure Axios in Taquito to work around this. */
     const operation = await Tezos.contract.transfer({ to: address, amount })
-    console.log(`Sent ${amount} xtz to ${address}`)
-    console.log(`Hash: ${operation.hash}`)
+    console.log(`Sent ${amount} xtz to ${address}\nHash: ${operation.hash}`)
     return operation.hash
   } catch (err) {
     console.error(`Error sending Tez to ${address}.`)
