@@ -1,10 +1,10 @@
 FROM node:18-alpine
 
+USER node
+
 WORKDIR /tezos-faucet-backend
 
 RUN chown node:node /tezos-faucet-backend
-
-USER node
 
 COPY --chown=node:node package.json ./
 COPY --chown=node:node package-lock.json ./
