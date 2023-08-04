@@ -58,22 +58,15 @@ const Tezos = (() => {
   return TezToolkit
 })()
 
-export const send = async (
+export const sendTez = async (
   amount: number,
   address: string
-): Promise<string> => {
+): Promise<string | void> => {
   // Check max balance
-  try {
-    const userBalance = (await Tezos.tz.getBalance(address)).toNumber()
-    if (userBalance > MAX_BALANCE * 1000000) {
-      console.log(
-        `User balance too high (${userBalance / 1000000}), don't send`
-      )
-      throw new Error("You have already enough ꜩ")
-    }
-  } catch (err) {
-    console.error(err)
-    throw new Error(`Error getting ${address} balance.`)
+  const userBalance = (await Tezos.tz.getBalance(address)).toNumber()
+  if (userBalance > MAX_BALANCE * 1000000) {
+    console.log(`${address} balance too high (${userBalance / 1000000}). Not sending.`)
+    return
   }
 
   // Create and send transaction

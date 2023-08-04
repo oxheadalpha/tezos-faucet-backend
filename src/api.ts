@@ -10,7 +10,7 @@ import { validateCaptcha, CAPTCHA_ENABLED } from "./Captcha"
 import {
   MAX_BALANCE,
   getTezAmountForProfile,
-  send,
+  sendTez,
   validateAddress,
 } from "./Tezos"
 import {
@@ -196,9 +196,14 @@ app.post("/verify", async (req: Request, res: Response) => {
       throw e
     })
 
-    // Here is where you would send the tez to the user's address
-    // For the sake of this example, we're just logging the address
-    const txHash = await send(amount, address)
+    const txHash = await sendTez(amount, address)
+
+    if (!txHash) {
+      return res
+        .status(403)
+        .send({ status: "ERROR", message: "You have already enough ꜩ" })
+    }
+
     return res
       .status(200)
       .send({ txHash, status: "SUCCESS", message: "Tez sent" })
