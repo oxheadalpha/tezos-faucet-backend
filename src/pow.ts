@@ -62,12 +62,12 @@ export const getChallenge = async (
   if (!Object.keys(data).length) return null
 
   return {
-    ...data,
+    challenge: data.challenge,
     challengeCounter: Number(data.challengeCounter),
     challengesNeeded: Number(data.challengesNeeded),
     difficulty: Number(data.difficulty),
     usedCaptcha: data.usedCaptcha === "true",
-  } as ChallengeState
+  } satisfies ChallengeState as ChallengeState
 }
 
 const getSolution = (challenge: string, nonce: number) =>
