@@ -190,11 +190,19 @@ app.post("/verify", async (req: Request, res: Response) => {
     }
 
     // The challenge should be deleted from redis before Tez is sent. If it
-    // failed to delete, the user could keep getting Tez with the same solution.
-    await redis.del(challengeKey).catch((e) => {
+    // failed to delete or was already deleted by another request, the user
+    // could keep getting Tez with the same solution.
+    const deletedCount = await redis.del(challengeKey).catch((e) => {
       console.error(`Redis failed to delete ${challengeKey}.`)
       throw e
     })
+
+    if (deletedCount === 0) {
+      // Challenge was already used/deleted, so do not send Tez
+      return res
+        .status(403)
+        .send({ status: "ERROR", message: "PoW challenge not found" })
+    }
 
     const txHash = await sendTez(amount, address)
 
