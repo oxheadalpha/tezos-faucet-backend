@@ -5,8 +5,8 @@
   "main": "dist/api.js",
   "scripts": {
     "build": "npx tsc",
-    "dev": "nodemon -e ts -w src --exec \"npx tsc && npm run serve\"",
-    "serve": "node dist/api.js",
+    "dev": "nodemon -e ts -w src --exec \"npx tsc && npm run start\"",
+    "start": "node dist/api.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

@@ -10,7 +10,7 @@ const httpWinstonLogger = winston.createLogger({
         timestamp,
         message: { method, url, status, responseTime, address },
       }) =>
-        `${timestamp}: ${method?.padEnd(7)} ${url?.padEnd(10)} ${status} ${(
+        `${timestamp} ${method?.padEnd(7)} ${url?.padEnd(10)} ${status} ${(
           responseTime + "ms"
         ).padEnd(5)} ${address}`
     )

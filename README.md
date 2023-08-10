@@ -1,28 +1,63 @@
-# Tezos testnet faucet API
+# Tezos Faucet Backend
 
 ## Overview
 
-Backend for Tezos faucet front app: https://github.com/oxheadalpha/tezos-faucet.
+The Tezos Faucet Backend (frontend code [here](https://github.com/oxheadalpha/tezos-faucet)) provides a reliable and secure way to distribute Tez to users. Through the implementation of a Proof of Work (PoW) mechanism, combined with CAPTCHA, we ensure users expend computational resources, thereby preventing bots and malicious actors from spamming and draining the faucet.
 
-## Prerequisite
+Here's a general flow of how it works:
 
-Create a ReCaptcha project (shared with faucet front app).
+1. **Requesting Tez**: A user initiates the process by making a request for tez. The backend responds by sending a challenge to the user.
+2. **Solving Challenges**: The user must solve the challenge by finding a correct solution. The complexity of the challenge can vary, and the user doesn't know in advance how many challenges they'll need to solve.
+3. **Verification & Receiving Tez**: Once the user submits a solution, the backend verifies it. If the solution is correct but there are more challenges to be solved, the user will be sent another challenge. This repeats until all challenges are solved correctly. Only then is the requested Tez granted to the user.
 
+## Prerequisites
 
-## Local run for development
+- **Node.js** v18
+- **Captcha** (Optional): Create a Google [ReCaptcha](https://www.google.com/recaptcha/about/) project. The public site key will be shared with the frontend. Activate domain verification in ReCAPTCHA parameters to allow only communication from the frontend faucet app.
+- **Redis**: Set up a Redis server to store PoW challenge data. It's recommended to use a single-instance Redis setup for the challenge data, as this ensures atomicity and helps in avoiding potential exploits. Given that the challenge data isn't persistent or long-term essential, a single instance suffices and is easier to maintain.
 
-Compile Typescript sources to `/dist` directory:
+## Config
+
+Set environment variables or add them to a `.env` file. See `.env.example`.
+
+Mandatory:
+
+- `FAUCET_PRIVATE_KEY`: Faucet's private key to sign transactions
+- `FAUCET_ADDRESS`: Public address of the faucet
+- `FAUCET_CAPTCHA_SECRET`: faucet ReCAPTCHA secret key (mandatory if `ENABLE_CAPTCHA=true`)
+- `RPC_URL`: Tezos node RPC URL to connect to
+
+Optional:
+
+- `ENABLE_CAPTCHA`: `true` to enable ReCAPTCHA, `false` otherwise (default: `true`)
+- `AUTHORIZED_HOST`: CORS origin whitelist (default `'*'`)
+- `API_PORT`: API listening port (default: `3000`)
+- `FAUCET_AMOUNT_USER`: number of XTZ to send for the `USER` profile (default: 1)
+- `FAUCET_AMOUNT_BAKER`: number of XTZ to send for the `BAKER` profile (default: 6000)
+- `MAX_BALANCE`: maximum address balance beyond which sending of XTZ is refused (default: 6000)
+
+## Running the API
+
+Install dependencies and compile Typescript sources to `/dist` directory:
 
 ```
+npm install
 npm run build
 ```
 
-Run API with `nodemon`:
+Run API:
+
 ```
-npm run serve
+npm run start
 ```
 
-## Deploy
+For developing with auto reloading:
+
+```
+npm run dev
+```
+
+## Docker
 
 ### Build
 
@@ -36,85 +71,48 @@ docker build . -t tezos-faucet-backend
 docker run -p 3000:3000 tezos-faucet-backend
 ```
 
-## Config
+## API Endpoints
 
-Set environment variables
+### GET /info
 
-Mandatory:
+Returns general information about the faucet, including the faucet's address, whether captcha is enabled, the max balance allowed, and the Tez amounts granted per profile.
 
-- `FAUCET_PRIVATE_KEY`: private key of the faucet, to sign transaction
-- `FAUCET_ADDRESS`: faucet address
-- `FAUCET_CAPTCHA_SECRET`: faucet ReCAPTCHA secret key (mandatory if ENABLE_CAPTCHA=true)
-- `RPC_URL`: Tezos node RPC URL to connect to
+Example response:
 
-Optional:
-
-- `ENABLE_CAPTCHA`: true to enable ReCAPTCHA, false otherwise (default: true)
-- `AUTHORIZED_HOST`: authorized host, for CORS (default: *).
-- `API_PORT`: API listening port (default: 3000)
-- `FAUCET_AMOUNT_USER`: number of XTZ to send for a regular request (default: 1)
-- `FAUCET_AMOUNT_BAKER`: number of XTZ to send for a baker request (default: 6000)
-- `MAX_BALANCE`: maximum user balance beyond which sending of XTZ is refused (default: 6000)
-
-## Security
-
-Activate domain verification in ReCAPTCHA parameters to allow only calls from the Front faucet.
-
-## Use
-
-### Request
-
-Request URL:
-```
-POST /send
-```
-
-Request body:
-```
+```json
 {
-    captchaToken:"...",
-    address:"tz1...",
-    profile:"USER"
+  "faucetAddress": "tz1...",
+  "captchaEnabled": true,
+  "maxBalance": 6000,
+  "profiles": {
+    "user": {
+      "profile": "USER",
+      "amount": 1,
+      "currency": "tez"
+    },
+    "baker": {
+      "profile": "BAKER",
+      "amount": 6000,
+      "currency": "tez"
+    }
+  }
 }
 ```
 
-- `token`: ReCaptcha user response token
-- `address`: address to send XTZ to
-- `profile`: USER for a regular user who will get 1 xtz. BAKER for a baker profile, who will get 6000 xtz.
+### POST /challenge
 
-### Response
+Initiates the Tez request procedure. The user provides their address, profile type (`BAKER` or `USER`), and captcha token (optional).
 
-#### Success
+If a challenge already exists for the user's address in Redis it will be returned in the response. Otherwise the endpoint generates a new challenge and stores it, along with associated data in Redis.
 
-Return code: HTTP 200
+The response contains the challenge string, a challenge counter starting at 1, and the difficulty. The challenge counter indicates the current challenge in a series of Proof of Work challenges that the user must complete. Users aren't privy in advance to the exact number of PoW challenges they'll need to solve to receive the requested Tez.
 
-Response body:
-```
-{
-    "status": "SUCCESS",
-    "txHash":"..."
-}
-```
+### POST /verify
 
-- `status`: SUCCESS
-- `txHash`: hash of transaction
+Allows users to submit solutions to the challenges. The user provides their address, nonce, solution string, and profile type.
 
+The endpoint verifies the solution by trying to regenerate it using the challenge string and nonce.
 
-#### Error
+If the solution is correct but the required number of challenges have not yet been satisfied, a new challenge is generated and returned in the response.
 
-Return code:
-
-- HTTP 400: Bad request (wrong captcha token)
-- HTTP 500: Server or Tezos node error
-
-
-Response body:
-```
-{
-    "status": "ERROR",
-    "message": "Captcha error"
-}
-```
-
-- `status`: ERROR
-- `message`: error message
+If all challenges have been completed, the user's address is granted the Tez amount for their profile type. The transaction hash is returned to indicate the transfer was successful.
