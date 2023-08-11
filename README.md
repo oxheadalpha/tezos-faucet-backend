@@ -24,7 +24,7 @@ Mandatory:
 
 - `FAUCET_PRIVATE_KEY`: Faucet's private key to sign transactions
 - `FAUCET_ADDRESS`: Public address of the faucet
-- `FAUCET_CAPTCHA_SECRET`: faucet ReCAPTCHA secret key (mandatory if `ENABLE_CAPTCHA=true`)
+- `CAPTCHA_SECRET`: faucet ReCAPTCHA secret key (mandatory if `ENABLE_CAPTCHA=true`)
 - `RPC_URL`: Tezos node RPC URL to connect to
 
 Optional:
@@ -32,8 +32,8 @@ Optional:
 - `ENABLE_CAPTCHA`: `true` to enable ReCAPTCHA, `false` otherwise (default: `true`)
 - `AUTHORIZED_HOST`: CORS origin whitelist (default `'*'`)
 - `API_PORT`: API listening port (default: `3000`)
-- `FAUCET_AMOUNT_USER`: number of XTZ to send for the `USER` profile (default: 1)
-- `FAUCET_AMOUNT_BAKER`: number of XTZ to send for the `BAKER` profile (default: 6000)
+- `USER_PROFILE_AMOUNT`: number of XTZ to send for the `USER` profile (default: 1)
+- `BAKER_PROFILE_AMOUNT`: number of XTZ to send for the `BAKER` profile (default: 6000)
 - `MAX_BALANCE`: maximum address balance beyond which sending of XTZ is refused (default: 6000)
 
 ## Running the API

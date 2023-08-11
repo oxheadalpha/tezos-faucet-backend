@@ -5,9 +5,9 @@ declare global {
       AUTHORIZED_HOST: string
       ENABLE_CAPTCHA: string
       FAUCET_ADDRESS: string
-      FAUCET_AMOUNT_BAKER: string
-      FAUCET_AMOUNT_USER: string
-      FAUCET_CAPTCHA_SECRET: string
+      BAKER_PROFILE_AMOUNT: string
+      USER_PROFILE_AMOUNT: string
+      CAPTCHA_SECRET: string
       FAUCET_PRIVATE_KEY: string
       MAX_BALANCE: string
       REDIS_PASSWORD: string

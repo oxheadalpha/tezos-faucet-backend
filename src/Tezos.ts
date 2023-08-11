@@ -5,12 +5,12 @@ import { Response } from "express"
 import { Profile } from "./Types"
 
 const defaultUserAmount = 1
-export const FAUCET_AMOUNT_USER =
-  Number(process.env.FAUCET_AMOUNT_USER) || defaultUserAmount
+export const USER_PROFILE_AMOUNT =
+  Number(process.env.USER_PROFILE_AMOUNT) || defaultUserAmount
 
 const defaultBakerAmount = 6000
-export const FAUCET_AMOUNT_BAKER =
-  Number(process.env.FAUCET_AMOUNT_BAKER) || defaultBakerAmount
+export const BAKER_PROFILE_AMOUNT =
+  Number(process.env.BAKER_PROFILE_AMOUNT) || defaultBakerAmount
 
 const defaultMaxBalance = 6000
 export const MAX_BALANCE = Number(process.env.MAX_BALANCE) || defaultMaxBalance
@@ -18,9 +18,9 @@ export const MAX_BALANCE = Number(process.env.MAX_BALANCE) || defaultMaxBalance
 export const getTezAmountForProfile = (profile: Profile) => {
   switch (profile.toUpperCase()) {
     case Profile.USER:
-      return FAUCET_AMOUNT_USER
+      return USER_PROFILE_AMOUNT
     case Profile.BAKER:
-      return FAUCET_AMOUNT_BAKER
+      return BAKER_PROFILE_AMOUNT
     default:
       throw new Error(`Unknown profile '${profile}'`)
   }

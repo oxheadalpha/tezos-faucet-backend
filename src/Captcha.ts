@@ -22,7 +22,7 @@ export const validateCaptcha = async (res: Response, captchaToken: string) => {
         {},
         {
           params: {
-            secret: process.env.FAUCET_CAPTCHA_SECRET,
+            secret: process.env.CAPTCHA_SECRET,
             response: captchaToken,
           },
         }
