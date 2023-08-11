@@ -1,7 +1,7 @@
-export enum Profile {
-  USER = "USER",
-  BAKER = "BAKER",
-}
+export const USER = "USER"
+export const BAKER = "BAKER"
+export type Profile = typeof USER | typeof BAKER
+export const Profiles: Record<string, Profile> = { USER, BAKER }
 
 export type RequestBody = {
   captchaToken: string

@@ -1,27 +1,32 @@
 import { createHash, randomBytes } from "crypto"
 import { redis } from "./api"
+import { Profile } from "./Types"
 
 export const DISABLE_CHALLENGES = process.env.DISABLE_CHALLENGES === 'true'
 
 export const getChallengeKey = (address: string): string => `address:${address}`
 
 // TODO: Implement
-const determineDifficulty = (usedCaptcha: boolean) => {
+const determineDifficulty = (usedCaptcha: boolean, profile: Profile) => {
   const challengeSize = 32
-  const difficulty = usedCaptcha ? 4 : 5
+  const difficulty = usedCaptcha
+    ? (Number(process.env[`${profile}_PROFILE_CAPTCHA_DIFFICULTY`]) || 4)
+    : (Number(process.env[`${profile}_PROFILE_DIFFICULTY`]) || 5)
   return { challengeSize, difficulty }
 }
 
 // TODO: Implement
-const determineChallengesNeeded = (usedCaptcha: boolean) =>
-  usedCaptcha ? 5 : 6
+const determineChallengesNeeded = (usedCaptcha: boolean, profile: Profile) =>
+  usedCaptcha
+    ? (Number(process.env[`${profile}_PROFILE_CAPTCHA_CHALLENGES_NEEDED`]) || 5)
+    : (Number(process.env[`${profile}_PROFILE_CHALLENGES_NEEDED`]) || 6)
 
 const generateChallenge = (bytesSize: number = 32) =>
   randomBytes(bytesSize).toString("hex")
 
-export const createChallenge = (usedCaptcha: boolean) => {
-  const challengesNeeded = determineChallengesNeeded(usedCaptcha)
-  const { challengeSize, difficulty } = determineDifficulty(usedCaptcha)
+export const createChallenge = (usedCaptcha: boolean, profile: Profile) => {
+  const challengesNeeded = determineChallengesNeeded(usedCaptcha, profile)
+  const { challengeSize, difficulty } = determineDifficulty(usedCaptcha, profile)
   const challenge = generateChallenge(challengeSize)
   return { challenge, challengesNeeded, difficulty }
 }
@@ -32,13 +37,12 @@ interface ChallengeState {
   challengesNeeded: number
   difficulty: number
   usedCaptcha: boolean
-  profile: string
+  profile: Profile
 }
 
 type SaveChallengeArgs = Omit<ChallengeState, "usedCaptcha"> & {
   usedCaptcha?: boolean
   expiration?: number
-  profile: string
 }
 
 export const saveChallenge = async (
@@ -46,13 +50,11 @@ export const saveChallenge = async (
   {
     usedCaptcha,
     expiration = 1800, // 30m
-    profile,
     ...args
   }: SaveChallengeArgs
 ) => {
   await redis.hSet(challengeKey, {
     ...args,
-    profile,
     ...(typeof usedCaptcha === "boolean" && {
       usedCaptcha: String(usedCaptcha),
     }),
@@ -73,7 +75,7 @@ export const getChallenge = async (
     challengesNeeded: Number(data.challengesNeeded),
     difficulty: Number(data.difficulty),
     usedCaptcha: data.usedCaptcha === "true",
-    profile: data.profile,
+    profile: data.profile as Profile,
   } satisfies ChallengeState as ChallengeState
 }
 

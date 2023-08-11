@@ -21,7 +21,7 @@ import {
   getChallenge,
   verifySolution,
 } from "./pow"
-import { InfoResponseBody, Profile } from "./Types"
+import { InfoResponseBody, Profiles } from "./Types"
 
 export const redis = createClient({
   url: process.env.REDIS_URL,
@@ -50,13 +50,13 @@ app.get("/info", (_, res: Response) => {
   try {
     const profiles: any = {
       user: {
-        profile: Profile.USER,
-        amount: getTezAmountForProfile(Profile.USER),
+        profile: Profiles.USER,
+        amount: getTezAmountForProfile(Profiles.USER),
         currency: "tez",
       },
       baker: {
-        profile: Profile.BAKER,
-        amount: getTezAmountForProfile(Profile.BAKER),
+        profile: Profiles.BAKER,
+        amount: getTezAmountForProfile(Profiles.BAKER),
         currency: "tez",
       },
     }
@@ -76,12 +76,10 @@ app.get("/info", (_, res: Response) => {
 
 app.post("/challenge", async (req: Request, res: Response) => {
   if (DISABLE_CHALLENGES) {
-    return res
-      .status(200)
-      .send({
-        status: "SUCCESS",
-        message: "Challenges are disabled. Use the /verify endpoint.",
-      })
+    return res.status(200).send({
+      status: "SUCCESS",
+      message: "Challenges are disabled. Use the /verify endpoint.",
+    })
   }
 
   const { address, captchaToken, profile } = req.body
@@ -116,8 +114,10 @@ app.post("/challenge", async (req: Request, res: Response) => {
     if (!challenge || profile !== existingProfile) {
       // If a captcha was sent it was validated above.
       const usedCaptcha = CAPTCHA_ENABLED && !!captchaToken
-      ;({ challenge, challengesNeeded, difficulty } =
-        createChallenge(usedCaptcha))
+      ;({ challenge, challengesNeeded, difficulty } = createChallenge(
+        usedCaptcha,
+        profile
+      ))
       challengeCounter = 1
       await saveChallenge(challengeKey, {
         challenge,
@@ -204,7 +204,7 @@ app.post("/verify", async (req: Request, res: Response) => {
     }
 
     if (challengeCounter < challengesNeeded) {
-      const newChallenge = createChallenge(usedCaptcha)
+      const newChallenge = createChallenge(usedCaptcha, profile)
       const resData = {
         challenge: newChallenge.challenge,
         challengeCounter: challengeCounter + 1,

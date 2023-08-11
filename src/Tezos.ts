@@ -2,7 +2,7 @@ import { InMemorySigner } from "@taquito/signer"
 import { TezosToolkit } from "@taquito/taquito"
 import { validateKeyHash } from "@taquito/utils"
 import { Response } from "express"
-import { Profile } from "./Types"
+import { Profile, Profiles } from "./Types"
 
 const defaultUserAmount = 1
 export const USER_PROFILE_AMOUNT =
@@ -17,9 +17,9 @@ export const MAX_BALANCE = Number(process.env.MAX_BALANCE) || defaultMaxBalance
 
 export const getTezAmountForProfile = (profile: Profile) => {
   switch (profile.toUpperCase()) {
-    case Profile.USER:
+    case Profiles.USER:
       return USER_PROFILE_AMOUNT
-    case Profile.BAKER:
+    case Profiles.BAKER:
       return BAKER_PROFILE_AMOUNT
     default:
       throw new Error(`Unknown profile '${profile}'`)
