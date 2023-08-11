@@ -2,18 +2,20 @@ import { InMemorySigner } from "@taquito/signer"
 import { TezosToolkit } from "@taquito/taquito"
 import { validateKeyHash } from "@taquito/utils"
 import { Response } from "express"
+
+import parsedEnv from "./env"
 import { Profile, Profiles } from "./Types"
 
 const defaultUserAmount = 1
 export const USER_PROFILE_AMOUNT =
-  Number(process.env.USER_PROFILE_AMOUNT) || defaultUserAmount
+  parsedEnv.profile.USER_PROFILE_AMOUNT || defaultUserAmount
 
 const defaultBakerAmount = 6000
 export const BAKER_PROFILE_AMOUNT =
-  Number(process.env.BAKER_PROFILE_AMOUNT) || defaultBakerAmount
+  parsedEnv.profile.BAKER_PROFILE_AMOUNT || defaultBakerAmount
 
 const defaultMaxBalance = 6000
-export const MAX_BALANCE = Number(process.env.MAX_BALANCE) || defaultMaxBalance
+export const MAX_BALANCE = parsedEnv.MAX_BALANCE || defaultMaxBalance
 
 export const getTezAmountForProfile = (profile: Profile) => {
   switch (profile.toUpperCase()) {

@@ -1,25 +1,25 @@
 import { createHash, randomBytes } from "crypto"
+
 import { redis } from "./api"
+import parsedEnv from "./env"
 import { Profile } from "./Types"
 
 export const DISABLE_CHALLENGES = process.env.DISABLE_CHALLENGES === 'true'
 
 export const getChallengeKey = (address: string): string => `address:${address}`
 
-// TODO: Implement
 const determineDifficulty = (usedCaptcha: boolean, profile: Profile) => {
   const challengeSize = 32
   const difficulty = usedCaptcha
-    ? (Number(process.env[`${profile}_PROFILE_CAPTCHA_DIFFICULTY`]) || 4)
-    : (Number(process.env[`${profile}_PROFILE_DIFFICULTY`]) || 5)
+    ? parsedEnv.profile[`${profile}_PROFILE_CAPTCHA_DIFFICULTY`] || 4
+    : parsedEnv.profile[`${profile}_PROFILE_DIFFICULTY`] || 5
   return { challengeSize, difficulty }
 }
 
-// TODO: Implement
 const determineChallengesNeeded = (usedCaptcha: boolean, profile: Profile) =>
   usedCaptcha
-    ? (Number(process.env[`${profile}_PROFILE_CAPTCHA_CHALLENGES_NEEDED`]) || 5)
-    : (Number(process.env[`${profile}_PROFILE_CHALLENGES_NEEDED`]) || 6)
+    ? parsedEnv.profile[`${profile}_PROFILE_CAPTCHA_CHALLENGES_NEEDED`] || 5
+    : parsedEnv.profile[`${profile}_PROFILE_CHALLENGES_NEEDED`] || 6
 
 const generateChallenge = (bytesSize: number = 32) =>
   randomBytes(bytesSize).toString("hex")
