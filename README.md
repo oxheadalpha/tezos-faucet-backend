@@ -14,7 +14,7 @@ Here's a general flow of how it works:
 
 - **Node.js** v18
 - **Captcha** (Optional): Create a Google [ReCaptcha](https://www.google.com/recaptcha/about/) project. The public site key will be shared with the frontend. Activate domain verification in ReCAPTCHA parameters to allow only communication from the frontend faucet app.
-- **Redis**: Set up a Redis server to store PoW challenge data. It's recommended to use a single-instance Redis setup for the challenge data, as this ensures atomicity and helps in avoiding potential exploits. Given that the challenge data isn't persistent or long-term essential, a single instance suffices and is easier to maintain.
+- **Redis** (Optional): If `DISABLE_CHALLENGES` is not set to `false`, set up a Redis server to store PoW challenge data. It's recommended to use a single-instance Redis setup for the challenge data, as this ensures atomicity and helps in avoiding potential exploits. Given that the challenge data isn't persistent or long-term essential, a single instance suffices and is easier to maintain.
 
 ## Config
 
@@ -27,14 +27,21 @@ Mandatory:
 - `CAPTCHA_SECRET`: faucet ReCAPTCHA secret key (mandatory if `ENABLE_CAPTCHA=true`)
 - `RPC_URL`: Tezos node RPC URL to connect to
 
+Per Profile Configurable. Valid profiles are `USER` and `BAKER`:
+
+- `{PROFILE}_PROFILE_AMOUNT`: The amount of Tez to be distributed for the specified profile. Default for `USER`: `1`, for `BAKER`: `6000`.
+- `{PROFILE}_PROFILE_CAPTCHA_DIFFICULTY`: The difficulty level of the challenge if a valid CAPTCHA is provided. Default for both `USER` and `BAKER`: `4`.
+- `{PROFILE}_PROFILE_DIFFICULTY`: The difficulty level of the challenge if no CAPTCHA is provided. Default for both `USER` and `BAKER`: `5`.
+- `{PROFILE}_PROFILE_CAPTCHA_CHALLENGES_NEEDED`: The number of challenges needed if a valid CAPTCHA is provided. Default for both `USER` and `BAKER`: `5`.
+- `{PROFILE}_PROFILE_CHALLENGES_NEEDED`: The number of challenges needed if no CAPTCHA is provided. Default for both `USER` and `BAKER`: `6`.
+
 Optional:
 
 - `ENABLE_CAPTCHA`: `true` to enable ReCAPTCHA, `false` otherwise (default: `true`)
-- `AUTHORIZED_HOST`: CORS origin whitelist (default `'*'`)
+- `AUTHORIZED_HOST`: CORS origin whitelist (default `*`)
 - `API_PORT`: API listening port (default: `3000`)
-- `USER_PROFILE_AMOUNT`: number of XTZ to send for the `USER` profile (default: 1)
-- `BAKER_PROFILE_AMOUNT`: number of XTZ to send for the `BAKER` profile (default: 6000)
-- `MAX_BALANCE`: maximum address balance beyond which sending of XTZ is refused (default: 6000)
+- `MAX_BALANCE`: maximum address balance beyond which sending of XTZ is refused (default: `6000`)
+- `DISABLE_CHALLENGES`: `true` to disable challenges (default: `false`)
 
 ## Running the API
 
