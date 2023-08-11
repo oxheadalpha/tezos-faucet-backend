@@ -1,6 +1,8 @@
 import { createHash, randomBytes } from "crypto"
 import { redis } from "./api"
 
+export const DISABLE_CHALLENGES = process.env.DISABLE_CHALLENGES === 'true'
+
 export const getChallengeKey = (address: string): string => `address:${address}`
 
 // TODO: Implement

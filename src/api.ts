@@ -14,6 +14,7 @@ import {
   validateAddress,
 } from "./Tezos"
 import {
+  DISABLE_CHALLENGES,
   createChallenge,
   getChallengeKey,
   saveChallenge,
@@ -74,6 +75,15 @@ app.get("/info", (_, res: Response) => {
 })
 
 app.post("/challenge", async (req: Request, res: Response) => {
+  if (DISABLE_CHALLENGES) {
+    return res
+      .status(200)
+      .send({
+        status: "SUCCESS",
+        message: "Challenges are disabled. Use the /verify endpoint.",
+      })
+  }
+
   const { address, captchaToken, profile } = req.body
 
   if (!address || !profile) {
@@ -135,11 +145,17 @@ app.post("/challenge", async (req: Request, res: Response) => {
 app.post("/verify", async (req: Request, res: Response) => {
   const { address, solution, nonce, profile } = req.body
 
-  if (!address || !solution || !nonce || !profile) {
+  if (!address || !profile) {
     return res.status(400).send({
       status: "ERROR",
-      message:
-        "'address', 'solution', 'nonce', and 'profile' fields are required",
+      message: "'address' and 'profile' fields are required",
+    })
+  }
+
+  if (!DISABLE_CHALLENGES && (!solution || !nonce)) {
+    return res.status(400).send({
+      status: "ERROR",
+      message: "'solution', and 'nonce', fields are required",
     })
   }
 
@@ -153,7 +169,7 @@ app.post("/verify", async (req: Request, res: Response) => {
     return res.status(400).send({ status: "ERROR", message: e.message })
   }
 
-  if (process.env.DISABLE_CHALLENGES === "true") {
+  if (DISABLE_CHALLENGES) {
     return sendTezAndRespond(res, amount, address)
   }
 
