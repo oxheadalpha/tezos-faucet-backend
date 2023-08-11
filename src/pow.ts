@@ -30,11 +30,13 @@ interface ChallengeState {
   challengesNeeded: number
   difficulty: number
   usedCaptcha: boolean
+  profile: string
 }
 
 type SaveChallengeArgs = Omit<ChallengeState, "usedCaptcha"> & {
   usedCaptcha?: boolean
   expiration?: number
+  profile: string
 }
 
 export const saveChallenge = async (
@@ -42,11 +44,13 @@ export const saveChallenge = async (
   {
     usedCaptcha,
     expiration = 1800, // 30m
+    profile,
     ...args
   }: SaveChallengeArgs
 ) => {
   await redis.hSet(challengeKey, {
     ...args,
+    profile,
     ...(typeof usedCaptcha === "boolean" && {
       usedCaptcha: String(usedCaptcha),
     }),
@@ -67,6 +71,7 @@ export const getChallenge = async (
     challengesNeeded: Number(data.challengesNeeded),
     difficulty: Number(data.difficulty),
     usedCaptcha: data.usedCaptcha === "true",
+    profile: data.profile,
   } satisfies ChallengeState as ChallengeState
 }
 

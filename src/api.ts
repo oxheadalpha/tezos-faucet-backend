@@ -109,6 +109,7 @@ app.post("/challenge", async (req: Request, res: Response) => {
         challengeCounter,
         difficulty,
         usedCaptcha,
+        profile,
       })
     }
 
@@ -186,6 +187,7 @@ app.post("/verify", async (req: Request, res: Response) => {
 
       await saveChallenge(challengeKey, {
         challengesNeeded: newChallenge.challengesNeeded,
+        profile,
         ...resData,
       })
       return res.status(200).send({ status: "SUCCESS", ...resData })
