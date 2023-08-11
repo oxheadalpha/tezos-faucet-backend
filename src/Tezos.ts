@@ -58,14 +58,16 @@ const Tezos = (() => {
   return TezToolkit
 })()
 
-export const sendTez = async (
+const sendTez = async (
   amount: number,
   address: string
 ): Promise<string | void> => {
   // Check max balance
   const userBalance = (await Tezos.tz.getBalance(address)).toNumber()
   if (userBalance > MAX_BALANCE * 1000000) {
-    console.log(`${address} balance too high (${userBalance / 1000000}). Not sending.`)
+    console.log(
+      `${address} balance too high (${userBalance / 1000000}). Not sending.`
+    )
     return
   }
 
@@ -83,4 +85,22 @@ export const sendTez = async (
     console.error(`Error sending Tez to ${address}.`)
     throw err
   }
+}
+
+export const sendTezAndRespond = async (
+  res: Response,
+  amount: number,
+  address: string
+) => {
+  const txHash = await sendTez(amount, address)
+
+  if (!txHash) {
+    return res
+      .status(403)
+      .send({ status: "ERROR", message: "You have already enough ꜩ" })
+  }
+
+  return res
+    .status(200)
+    .send({ txHash, status: "SUCCESS", message: "Tez sent" })
 }

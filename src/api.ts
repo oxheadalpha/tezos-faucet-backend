@@ -10,7 +10,7 @@ import { validateCaptcha, CAPTCHA_ENABLED } from "./Captcha"
 import {
   MAX_BALANCE,
   getTezAmountForProfile,
-  sendTez,
+  sendTezAndRespond,
   validateAddress,
 } from "./Tezos"
 import {
@@ -153,6 +153,10 @@ app.post("/verify", async (req: Request, res: Response) => {
     return res.status(400).send({ status: "ERROR", message: e.message })
   }
 
+  if (process.env.DISABLE_CHALLENGES === "true") {
+    return sendTezAndRespond(res, amount, address)
+  }
+
   try {
     const challengeKey = getChallengeKey(address)
     const redisChallenge = await getChallenge(challengeKey)
@@ -214,17 +218,7 @@ app.post("/verify", async (req: Request, res: Response) => {
         .send({ status: "ERROR", message: "PoW challenge not found" })
     }
 
-    const txHash = await sendTez(amount, address)
-
-    if (!txHash) {
-      return res
-        .status(403)
-        .send({ status: "ERROR", message: "You have already enough ꜩ" })
-    }
-
-    return res
-      .status(200)
-      .send({ txHash, status: "SUCCESS", message: "Tez sent" })
+    return sendTezAndRespond(res, amount, address)
   } catch (err: any) {
     console.error(err)
     return res
