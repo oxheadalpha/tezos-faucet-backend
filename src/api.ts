@@ -97,9 +97,10 @@ app.post("/challenge", async (req: Request, res: Response) => {
     let { challenge, challengesNeeded, challengeCounter, difficulty } =
       (await getChallenge(challengeKey)) || {}
 
-    if (!challenge) {
-      // If a captcha was sent it was validated above.
-      const usedCaptcha = CAPTCHA_ENABLED && !!captchaToken
+    // If a captcha was sent it was validated above.
+    const usedCaptcha = CAPTCHA_ENABLED && !!captchaToken
+    const existingProfile = (await getChallenge(challengeKey))?.profile
+    if (!challenge || profile !== existingProfile) {
       ;({ challenge, challengesNeeded, difficulty } =
         createChallenge(usedCaptcha))
       challengeCounter = 1
