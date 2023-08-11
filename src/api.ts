@@ -94,13 +94,18 @@ app.post("/challenge", async (req: Request, res: Response) => {
 
   try {
     const challengeKey = getChallengeKey(address)
-    let { challenge, challengesNeeded, challengeCounter, difficulty } =
-      (await getChallenge(challengeKey)) || {}
+    let {
+      challenge,
+      challengesNeeded,
+      challengeCounter,
+      difficulty,
+      profile: existingProfile,
+    } = (await getChallenge(challengeKey)) || {}
 
-    // If a captcha was sent it was validated above.
-    const usedCaptcha = CAPTCHA_ENABLED && !!captchaToken
-    const existingProfile = (await getChallenge(challengeKey))?.profile
+    // If no challenge exists or the profile has changed, start a new challenge.
     if (!challenge || profile !== existingProfile) {
+      // If a captcha was sent it was validated above.
+      const usedCaptcha = CAPTCHA_ENABLED && !!captchaToken
       ;({ challenge, challengesNeeded, difficulty } =
         createChallenge(usedCaptcha))
       challengeCounter = 1
