@@ -25,7 +25,9 @@ import { InfoResponseBody, Profile } from "./Types"
 export const redis = createClient({
   url: process.env.REDIS_URL,
   password: process.env.REDIS_PASSWORD,
-}).on("error", (err: any) => console.log("Redis Client Error:", err))
+})
+  .on("connect", () => console.log("Connected to redis."))
+  .on("error", (err: any) => console.error("Redis Client Error:", err))
 
 const app: Express = express()
 app.use(bodyParser.json())
@@ -192,9 +194,9 @@ app.post("/verify", async (req: Request, res: Response) => {
     // The challenge should be deleted from redis before Tez is sent. If it
     // failed to delete or was already deleted by another request, the user
     // could keep getting Tez with the same solution.
-    const deletedCount = await redis.del(challengeKey).catch((e) => {
+    const deletedCount = await redis.del(challengeKey).catch((err) => {
       console.error(`Redis failed to delete ${challengeKey}.`)
-      throw e
+      throw err
     })
 
     if (deletedCount === 0) {
@@ -223,13 +225,31 @@ app.post("/verify", async (req: Request, res: Response) => {
   }
 })
 
-const port = process.env.API_PORT || 3000
-
+// Connect to redis, start server, and setup listeners for graceful shutdown.
 ;(async () => {
   await redis.connect()
-  console.log("Connected to redis.")
 
-  app.listen(port, () => {
+  const port = process.env.API_PORT || 3000
+  const server = app.listen(port, () =>
     console.log(`Listening on port ${port}.`)
-  })
+  )
+
+  const gracefulShutdown = async (signal: string) => {
+    console.log(`${signal} signal received`)
+
+    try {
+      await redis.quit()
+      console.log("Redis connection closed.")
+    } catch (err) {
+      console.error("Error closing Redis connection:", err)
+    }
+
+    server.close(() => {
+      console.log("HTTP server closed.")
+      process.exit(0)
+    })
+  }
+
+  process.on("SIGINT", () => gracefulShutdown("SIGINT"))
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"))
 })()
