@@ -1,6 +1,5 @@
 import { InMemorySigner } from "@taquito/signer"
 import { TezosToolkit } from "@taquito/taquito"
-import { validateKeyHash } from "@taquito/utils"
 import { Response } from "express"
 
 import parsedEnv from "./env"
@@ -18,7 +17,7 @@ const defaultMaxBalance = 6000
 export const MAX_BALANCE = parsedEnv.MAX_BALANCE || defaultMaxBalance
 
 export const getTezAmountForProfile = (profile: Profile) => {
-  switch (profile.toUpperCase()) {
+  switch (profile) {
     case Profiles.USER:
       return USER_PROFILE_AMOUNT
     case Profiles.BAKER:
@@ -26,16 +25,6 @@ export const getTezAmountForProfile = (profile: Profile) => {
     default:
       throw new Error(`Unknown profile '${profile}'`)
   }
-}
-
-export const validateAddress = (res: Response, address: string) => {
-  if (validateKeyHash(address) !== 3) {
-    res
-      .status(400)
-      .send({ status: "ERROR", message: `The address '${address}' is invalid` })
-    return false
-  }
-  return true
 }
 
 // Setup the TezosToolkit to interact with the chain.
@@ -73,20 +62,14 @@ const sendTez = async (
     return
   }
 
-  // Create and send transaction
-  try {
-    /* Note: `transfer` doesn't work well when running on node v19+. The
+  /* Note: `transfer` doesn't work well when running on node v19+. The
     underlying Axios requests breaks with "ECONNRESET error socket hang up".
     This is likely because node v19 sets HTTP(S) `keepAlive` to true by default
     and the Tezos node ends up killing the long-lived connection. It isn't easy
     to configure Axios in Taquito to work around this. */
-    const operation = await Tezos.contract.transfer({ to: address, amount })
-    console.log(`Sent ${amount} xtz to ${address}\nHash: ${operation.hash}`)
-    return operation.hash
-  } catch (err) {
-    console.error(`Error sending Tez to ${address}.`)
-    throw err
-  }
+  const operation = await Tezos.contract.transfer({ to: address, amount })
+  console.log(`Sent ${amount} xtz to ${address}\nHash: ${operation.hash}`)
+  return operation.hash
 }
 
 export const sendTezAndRespond = async (
@@ -94,15 +77,20 @@ export const sendTezAndRespond = async (
   amount: number,
   address: string
 ) => {
-  const txHash = await sendTez(amount, address)
+  try {
+    const txHash = await sendTez(amount, address)
 
-  if (!txHash) {
+    if (!txHash) {
+      return res
+        .status(403)
+        .send({ status: "ERROR", message: "You have already enough ꜩ" })
+    }
+
     return res
-      .status(403)
-      .send({ status: "ERROR", message: "You have already enough ꜩ" })
+      .status(200)
+      .send({ txHash, status: "SUCCESS", message: "Tez sent" })
+  } catch (err) {
+    console.error(`Error sending Tez to ${address}.`)
+    throw err
   }
-
-  return res
-    .status(200)
-    .send({ txHash, status: "SUCCESS", message: "Tez sent" })
 }

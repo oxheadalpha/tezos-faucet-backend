@@ -2,17 +2,13 @@ import dotenv from "dotenv"
 dotenv.config()
 
 import bodyParser from "body-parser"
-import express, { Express, Request, Response } from "express"
+import express, { Express, NextFunction, Request, Response } from "express"
 import { createClient } from "redis"
 
 import { httpLogger } from "./logging"
+import { challengeMiddleware, verifyMiddleware } from "./middleware"
 import { validateCaptcha, CAPTCHA_ENABLED } from "./Captcha"
-import {
-  MAX_BALANCE,
-  getTezAmountForProfile,
-  sendTezAndRespond,
-  validateAddress,
-} from "./Tezos"
+import { MAX_BALANCE, getTezAmountForProfile, sendTezAndRespond } from "./Tezos"
 import {
   DISABLE_CHALLENGES,
   createChallenge,
@@ -74,92 +70,59 @@ app.get("/info", (_, res: Response) => {
   }
 })
 
-app.post("/challenge", async (req: Request, res: Response) => {
-  if (DISABLE_CHALLENGES) {
-    return res.status(200).send({
-      status: "SUCCESS",
-      message: "Challenges are disabled. Use the /verify endpoint.",
-    })
-  }
+app.post(
+  "/challenge",
+  challengeMiddleware,
+  async (req: Request, res: Response) => {
+    const { address, captchaToken, profile } = req.body
 
-  const { address, captchaToken, profile } = req.body
+    if (captchaToken && !(await validateCaptcha(res, captchaToken))) return
 
-  if (!address || !profile) {
-    return res.status(400).send({
-      satus: "ERROR",
-      message: "'address' and 'profile' fields are required",
-    })
-  }
-
-  if (!validateAddress(res, address)) return
-  if (captchaToken && !(await validateCaptcha(res, captchaToken))) return
-
-  try {
-    getTezAmountForProfile(profile)
-  } catch (e: any) {
-    return res.status(400).send({ status: "ERROR", message: e.message })
-  }
-
-  try {
-    const challengeKey = getChallengeKey(address)
-    let {
-      challenge,
-      challengesNeeded,
-      challengeCounter,
-      difficulty,
-      profile: existingProfile,
-    } = (await getChallenge(challengeKey)) || {}
-
-    // If no challenge exists or the profile has changed, start a new challenge.
-    if (!challenge || profile !== existingProfile) {
-      // If a captcha was sent it was validated above.
-      const usedCaptcha = CAPTCHA_ENABLED && !!captchaToken
-      ;({ challenge, challengesNeeded, difficulty } = createChallenge(
-        usedCaptcha,
-        profile
-      ))
-      challengeCounter = 1
-      await saveChallenge(challengeKey, {
+    try {
+      const challengeKey = getChallengeKey(address)
+      let {
         challenge,
         challengesNeeded,
         challengeCounter,
         difficulty,
-        usedCaptcha,
-        profile,
+        profile: existingProfile,
+      } = (await getChallenge(challengeKey)) || {}
+
+      // If no challenge exists or the profile has changed, start a new challenge.
+      if (!challenge || profile !== existingProfile) {
+        // If a captcha was sent it was validated above.
+        const usedCaptcha = CAPTCHA_ENABLED && !!captchaToken
+        ;({ challenge, challengesNeeded, difficulty } = createChallenge(
+          usedCaptcha,
+          profile
+        ))
+        challengeCounter = 1
+        await saveChallenge(challengeKey, {
+          challenge,
+          challengesNeeded,
+          challengeCounter,
+          difficulty,
+          usedCaptcha,
+          profile,
+        })
+      }
+
+      return res.status(200).send({
+        status: "SUCCESS",
+        challenge,
+        challengeCounter,
+        difficulty,
       })
+    } catch (err: any) {
+      const message = "Error getting challenge"
+      console.error(message, err)
+      return res.status(500).send({ status: "ERROR", message })
     }
-
-    return res.status(200).send({
-      status: "SUCCESS",
-      challenge,
-      challengeCounter,
-      difficulty,
-    })
-  } catch (err: any) {
-    const message = "Error getting challenge"
-    console.error(message, err)
-    return res.status(500).send({ status: "ERROR", message })
   }
-})
+)
 
-app.post("/verify", async (req: Request, res: Response) => {
+app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
   const { address, solution, nonce, profile } = req.body
-
-  if (!address || !profile) {
-    return res.status(400).send({
-      status: "ERROR",
-      message: "'address' and 'profile' fields are required",
-    })
-  }
-
-  if (!DISABLE_CHALLENGES && (!solution || !nonce)) {
-    return res.status(400).send({
-      status: "ERROR",
-      message: "'solution', and 'nonce', fields are required",
-    })
-  }
-
-  if (!validateAddress(res, address)) return
 
   let amount
 
@@ -169,11 +132,12 @@ app.post("/verify", async (req: Request, res: Response) => {
     return res.status(400).send({ status: "ERROR", message: e.message })
   }
 
-  if (DISABLE_CHALLENGES) {
-    return sendTezAndRespond(res, amount, address)
-  }
-
   try {
+    if (DISABLE_CHALLENGES) {
+      await sendTezAndRespond(res, amount, address)
+      return
+    }
+
     const challengeKey = getChallengeKey(address)
     const redisChallenge = await getChallenge(challengeKey)
     if (!redisChallenge) {
@@ -234,7 +198,7 @@ app.post("/verify", async (req: Request, res: Response) => {
         .send({ status: "ERROR", message: "PoW challenge not found" })
     }
 
-    return sendTezAndRespond(res, amount, address)
+    await sendTezAndRespond(res, amount, address)
   } catch (err: any) {
     console.error(err)
     return res
