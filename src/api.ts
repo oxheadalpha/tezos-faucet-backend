@@ -85,11 +85,11 @@ app.post(
         challengesNeeded,
         challengeCounter,
         difficulty,
-        profile: existingProfile,
+        profile: currentProfile,
       } = (await getChallenge(challengeKey)) || {}
-
+      console.log(profile, currentProfile, challengeCounter)
       // If no challenge exists or the profile has changed, start a new challenge.
-      if (!challenge || profile !== existingProfile) {
+      if (!challenge || profile !== currentProfile) {
         // If a captcha was sent it was validated above.
         const usedCaptcha = CAPTCHA_ENABLED && !!captchaToken
         ;({ challenge, challengesNeeded, difficulty } = createChallenge(
@@ -122,19 +122,11 @@ app.post(
 )
 
 app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
-  const { address, solution, nonce, profile } = req.body
-
-  let amount
-
   try {
-    amount = getTezAmountForProfile(profile)
-  } catch (e: any) {
-    return res.status(400).send({ status: "ERROR", message: e.message })
-  }
+    const { address, solution, nonce, profile } = req.body
 
-  try {
     if (DISABLE_CHALLENGES) {
-      await sendTezAndRespond(res, amount, address)
+      await sendTezAndRespond(res, address, profile)
       return
     }
 
@@ -151,6 +143,7 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
       challengesNeeded,
       challengeCounter,
       difficulty,
+      profile: currentProfile,
       usedCaptcha,
     } = redisChallenge
 
@@ -198,7 +191,7 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
         .send({ status: "ERROR", message: "PoW challenge not found" })
     }
 
-    await sendTezAndRespond(res, amount, address)
+    await sendTezAndRespond(res, address, currentProfile)
   } catch (err: any) {
     console.error(err)
     return res

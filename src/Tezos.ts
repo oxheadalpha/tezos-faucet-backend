@@ -74,10 +74,11 @@ const sendTez = async (
 
 export const sendTezAndRespond = async (
   res: Response,
-  amount: number,
-  address: string
+  address: string,
+  profile: Profile
 ) => {
   try {
+    const amount = getTezAmountForProfile(profile)
     const txHash = await sendTez(amount, address)
 
     if (!txHash) {
