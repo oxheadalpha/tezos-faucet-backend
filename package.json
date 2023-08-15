@@ -6,7 +6,7 @@
   "scripts": {
     "build": "npx tsc",
     "dev": "nodemon -e ts -w src --exec \"npx tsc && npm run start\"",
-    "start": "node dist/api.js",
+    "start": "node --enable-source-maps dist/api.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

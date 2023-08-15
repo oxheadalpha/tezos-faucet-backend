@@ -66,13 +66,6 @@ const validateProfile = (req: Request, res: Response, next: NextFunction) => {
   next()
 }
 
-export const challengeMiddleware = [
-  checkChallengesEnabled,
-  transformBody,
-  validateProfile,
-  validateAddress,
-]
-
 const validateChallengeBody = (
   req: Request,
   res: Response,
@@ -89,6 +82,13 @@ const validateChallengeBody = (
 
   next()
 }
+
+export const challengeMiddleware = [
+  checkChallengesEnabled,
+  transformBody,
+  validateProfile,
+  validateAddress,
+]
 
 export const verifyMiddleware = [
   transformBody,

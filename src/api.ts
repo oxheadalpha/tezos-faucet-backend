@@ -87,7 +87,7 @@ app.post(
         difficulty,
         profile: currentProfile,
       } = (await getChallenge(challengeKey)) || {}
-      console.log(profile, currentProfile, challengeCounter)
+
       // If no challenge exists or the profile has changed, start a new challenge.
       if (!challenge || profile !== currentProfile) {
         // If a captcha was sent it was validated above.
@@ -192,6 +192,7 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
     }
 
     await sendTezAndRespond(res, address, currentProfile)
+    return
   } catch (err: any) {
     console.error(err)
     return res

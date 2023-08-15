@@ -15,4 +15,4 @@ COPY --chown=node:node . ./
 
 RUN ./node_modules/typescript/bin/tsc
 
-CMD ["node", "./dist/api.js"]
+CMD ["node", "--enable-source-maps", "./dist/api.js"]
