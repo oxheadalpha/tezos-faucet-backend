@@ -14,12 +14,9 @@ declare global {
     interface ProcessEnv extends ProfileEnvVars<Profile> {
       API_PORT: string
       AUTHORIZED_HOST: string
-      DISABLE_CHALLENGES: string
-      ENABLE_CAPTCHA: string
-      FAUCET_ADDRESS: string
-      BAKER_PROFILE_AMOUNT: string
-      USER_PROFILE_AMOUNT: string
       CAPTCHA_SECRET: string
+      ENABLE_CAPTCHA: string
+      DISABLE_CHALLENGES: string
       FAUCET_PRIVATE_KEY: string
       MAX_BALANCE: string
       REDIS_PASSWORD: string

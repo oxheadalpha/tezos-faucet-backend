@@ -23,7 +23,6 @@ Set environment variables or add them to a `.env` file. See `.env.example`.
 Mandatory:
 
 - `FAUCET_PRIVATE_KEY`: Faucet's private key to sign transactions
-- `FAUCET_ADDRESS`: Public address of the faucet
 - `CAPTCHA_SECRET`: faucet ReCAPTCHA secret key (mandatory if `ENABLE_CAPTCHA=true`)
 - `RPC_URL`: Tezos node RPC URL to connect to
 

@@ -2,13 +2,13 @@ import dotenv from "dotenv"
 dotenv.config()
 
 import bodyParser from "body-parser"
-import express, { Express, NextFunction, Request, Response } from "express"
+import express, { Express, Request, Response } from "express"
 import { createClient } from "redis"
 
 import { httpLogger } from "./logging"
 import { challengeMiddleware, verifyMiddleware } from "./middleware"
 import { validateCaptcha, CAPTCHA_ENABLED } from "./Captcha"
-import { MAX_BALANCE, getTezAmountForProfile, sendTezAndRespond } from "./Tezos"
+import { MAX_BALANCE, Tezos, getTezAmountForProfile, sendTezAndRespond } from "./Tezos"
 import {
   DISABLE_CHALLENGES,
   createChallenge,
@@ -42,7 +42,7 @@ app.use((_, res: Response, next) => {
   next()
 })
 
-app.get("/info", (_, res: Response) => {
+app.get("/info", async (_, res: Response) => {
   try {
     const profiles: any = {
       user: {
@@ -58,7 +58,7 @@ app.get("/info", (_, res: Response) => {
     }
 
     const info: InfoResponseBody = {
-      faucetAddress: process.env.FAUCET_ADDRESS,
+      faucetAddress: await Tezos.signer.publicKeyHash(),
       captchaEnabled: CAPTCHA_ENABLED,
       maxBalance: MAX_BALANCE,
       profiles,

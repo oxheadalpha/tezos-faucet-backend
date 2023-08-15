@@ -5,6 +5,28 @@ import { Response } from "express"
 import parsedEnv from "./env"
 import { Profile, Profiles } from "./Types"
 
+// Setup the TezosToolkit to interact with the chain.
+export const Tezos = (() => {
+  const rpcUrl = process.env.RPC_URL
+  if (!rpcUrl) {
+    throw new Error("No RPC_URL defined.")
+  }
+
+  const TezToolkit = new TezosToolkit(rpcUrl)
+
+  const faucetPrivateKey = process.env.FAUCET_PRIVATE_KEY
+  if (!faucetPrivateKey) {
+    throw new Error("No FAUCET_PRIVATE_KEY defined.")
+  }
+
+  // Create signer
+  TezToolkit.setProvider({
+    signer: new InMemorySigner(faucetPrivateKey),
+  })
+
+  return TezToolkit
+})()
+
 const defaultUserAmount = 1
 export const USER_PROFILE_AMOUNT =
   parsedEnv.profile.USER_PROFILE_AMOUNT || defaultUserAmount
@@ -26,28 +48,6 @@ export const getTezAmountForProfile = (profile: Profile) => {
       throw new Error(`Unknown profile '${profile}'`)
   }
 }
-
-// Setup the TezosToolkit to interact with the chain.
-const Tezos = (() => {
-  const rpcUrl = process.env.RPC_URL
-  if (!rpcUrl) {
-    throw new Error("No RPC_URL defined.")
-  }
-
-  const TezToolkit = new TezosToolkit(rpcUrl)
-
-  const faucetPrivateKey = process.env.FAUCET_PRIVATE_KEY
-  if (!faucetPrivateKey) {
-    throw new Error("No FAUCET_PRIVATE_KEY defined.")
-  }
-
-  // Create signer
-  TezToolkit.setProvider({
-    signer: new InMemorySigner(faucetPrivateKey),
-  })
-
-  return TezToolkit
-})()
 
 const sendTez = async (
   amount: number,
