@@ -26,21 +26,25 @@ Mandatory:
 - `CAPTCHA_SECRET`: faucet ReCAPTCHA secret key (mandatory if `ENABLE_CAPTCHA=true`)
 - `RPC_URL`: Tezos node RPC URL to connect to
 
-Per Profile Configurable. Valid profiles are `USER` and `BAKER`:
+### Profile Configuration
 
-- `{PROFILE}_PROFILE_AMOUNT`: The amount of Tez to be distributed for the specified profile. Default for `USER`: `1`, for `BAKER`: `6000`.
-- `{PROFILE}_PROFILE_CAPTCHA_DIFFICULTY`: The difficulty level of the challenge if a valid CAPTCHA is provided. Default for both `USER` and `BAKER`: `4`.
-- `{PROFILE}_PROFILE_DIFFICULTY`: The difficulty level of the challenge if no CAPTCHA is provided. Default for both `USER` and `BAKER`: `5`.
-- `{PROFILE}_PROFILE_CAPTCHA_CHALLENGES_NEEDED`: The number of challenges needed if a valid CAPTCHA is provided. Default for both `USER` and `BAKER`: `5`.
-- `{PROFILE}_PROFILE_CHALLENGES_NEEDED`: The number of challenges needed if no CAPTCHA is provided. Default for both `USER` and `BAKER`: `6`.
+Profiles are configured in the [profiles.json](./profiles.json) file. Each profile is an object with the following properties:
+
+- `amount`: The amount of Tez to be distributed for the specified profile. Default for `USER`: `1`, for `BAKER`: `6000`.
+- `challengesNeeded`: The number of challenges needed if no CAPTCHA is provided. Default for both `USER` and `BAKER`: `6`.
+- `challengesNeededWithCaptcha`: The number of challenges needed if a valid CAPTCHA is provided. Default for both `USER` and `BAKER`: `5`.
+- `difficulty`: The difficulty level of the challenge if no CAPTCHA is provided. Default for both `USER` and `BAKER`: `5`.
+- `difficultyWithCaptcha`: The difficulty level of the challenge if a valid CAPTCHA is provided. Default for both `USER` and `BAKER`: `4`.
+
+The [src/profiles.ts](src/profiles.ts) file imports this JSON file and validates these properties. If any property is missing or invalid, an error will be thrown.
 
 Optional:
 
-- `ENABLE_CAPTCHA`: `true` to enable ReCAPTCHA, `false` otherwise (default: `true`)
-- `AUTHORIZED_HOST`: CORS origin whitelist (default `*`)
 - `API_PORT`: API listening port (default: `3000`)
-- `MAX_BALANCE`: maximum address balance beyond which sending of XTZ is refused (default: `6000`)
+- `AUTHORIZED_HOST`: CORS origin whitelist (default `*`)
 - `DISABLE_CHALLENGES`: `true` to disable challenges (default: `false`)
+- `ENABLE_CAPTCHA`: `true` to enable ReCAPTCHA, `false` otherwise (default: `true`)
+- `MAX_BALANCE`: maximum address balance beyond which sending of XTZ is refused (default: `6000`)
 
 ## Running the API
 
