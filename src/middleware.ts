@@ -2,7 +2,7 @@ import { validateKeyHash } from "@taquito/utils"
 import { Request, Response, NextFunction } from "express"
 
 import { DISABLE_CHALLENGES } from "./pow"
-import { Profiles } from "./Types"
+import profiles, { Profile } from "./profiles"
 
 const checkChallengesEnabled = (
   req: Request,
@@ -56,7 +56,7 @@ const validateProfile = (req: Request, res: Response, next: NextFunction) => {
     })
   }
 
-  if (!Profiles[profile]) {
+  if (!profiles[profile]) {
     return res.status(400).send({
       status: "ERROR",
       message: `Unknown profile '${profile}'`,

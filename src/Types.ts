@@ -1,12 +1,9 @@
-export const USER = "USER"
-export const BAKER = "BAKER"
-export type Profile = typeof USER | typeof BAKER
-export const Profiles: Record<string, Profile> = { USER, BAKER }
+import { Profile } from "./profiles"
 
 export type RequestBody = {
   captchaToken: string
   address: string
-  profile: string
+  profile: Profile
 }
 
 export type ResponseBody = {
@@ -16,7 +13,7 @@ export type ResponseBody = {
 }
 
 export type ProfileInfo = {
-  profile: string
+  profile: Profile
   amount: number
   currency: string
 }
@@ -24,6 +21,6 @@ export type ProfileInfo = {
 export type InfoResponseBody = {
   faucetAddress: string
   captchaEnabled: boolean
-  profiles: ProfileInfo
+  profiles: Record<Profile, ProfileInfo>
   maxBalance: number
 }

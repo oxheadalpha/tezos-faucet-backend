@@ -1,8 +1,7 @@
 import { createHash, randomBytes } from "crypto"
 
 import { redis } from "./api"
-import parsedEnv from "./env"
-import { Profile } from "./Types"
+import profiles, { Profile } from "./profiles"
 
 export const DISABLE_CHALLENGES = process.env.DISABLE_CHALLENGES === 'true'
 
@@ -11,15 +10,15 @@ export const getChallengeKey = (address: string): string => `address:${address}`
 const determineDifficulty = (usedCaptcha: boolean, profile: Profile) => {
   const challengeSize = 32
   const difficulty = usedCaptcha
-    ? parsedEnv.profile[`${profile}_PROFILE_CAPTCHA_DIFFICULTY`] || 4
-    : parsedEnv.profile[`${profile}_PROFILE_DIFFICULTY`] || 5
+    ? profiles[profile].difficultyWithCaptcha
+    : profiles[profile].difficulty
   return { challengeSize, difficulty }
 }
 
 const determineChallengesNeeded = (usedCaptcha: boolean, profile: Profile) =>
   usedCaptcha
-    ? parsedEnv.profile[`${profile}_PROFILE_CAPTCHA_CHALLENGES_NEEDED`] || 5
-    : parsedEnv.profile[`${profile}_PROFILE_CHALLENGES_NEEDED`] || 6
+    ? profiles[profile].challengesNeededWithCaptcha
+    : profiles[profile].challengesNeeded
 
 const generateChallenge = (bytesSize: number = 32) =>
   randomBytes(bytesSize).toString("hex")
@@ -75,7 +74,7 @@ export const getChallenge = async (
     challengesNeeded: Number(data.challengesNeeded),
     difficulty: Number(data.difficulty),
     usedCaptcha: data.usedCaptcha === "true",
-    profile: data.profile as Profile,
+    profile: data.profile satisfies Profile as Profile,
   } satisfies ChallengeState as ChallengeState
 }
 

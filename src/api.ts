@@ -5,19 +5,13 @@ import bodyParser from "body-parser"
 import express, { Express, Request, Response } from "express"
 import { createClient } from "redis"
 
-import { httpLogger } from "./logging"
 import { challengeMiddleware, verifyMiddleware } from "./middleware"
+import { httpLogger } from "./logging"
+import { MAX_BALANCE, Tezos, sendTezAndRespond } from "./Tezos"
 import { validateCaptcha, CAPTCHA_ENABLED } from "./Captcha"
-import { MAX_BALANCE, Tezos, getTezAmountForProfile, sendTezAndRespond } from "./Tezos"
-import {
-  DISABLE_CHALLENGES,
-  createChallenge,
-  getChallengeKey,
-  saveChallenge,
-  getChallenge,
-  verifySolution,
-} from "./pow"
-import { InfoResponseBody, Profiles } from "./Types"
+import * as pow from "./pow"
+import profiles, { Profile } from "./profiles"
+import { InfoResponseBody, ProfileInfo } from "./Types"
 
 export const redis = createClient({
   url: process.env.REDIS_URL,
@@ -44,29 +38,29 @@ app.use((_, res: Response, next) => {
 
 app.get("/info", async (_, res: Response) => {
   try {
-    const profiles: any = {
-      user: {
-        profile: Profiles.USER,
-        amount: getTezAmountForProfile(Profiles.USER),
-        currency: "tez",
-      },
-      baker: {
-        profile: Profiles.BAKER,
-        amount: getTezAmountForProfile(Profiles.BAKER),
-        currency: "tez",
-      },
-    }
+    const profilesInfo: Record<Profile, ProfileInfo> = Object.fromEntries(
+      Object.entries(profiles).map(([profile, profileConfig]) => [
+        profile,
+        {
+          profile,
+          amount: profileConfig.amount,
+          currency: "tez",
+        },
+      ])
+    )
 
     const info: InfoResponseBody = {
       faucetAddress: await Tezos.signer.publicKeyHash(),
       captchaEnabled: CAPTCHA_ENABLED,
       maxBalance: MAX_BALANCE,
-      profiles,
+      profiles: profilesInfo,
     }
-    res.status(200).send(info)
+    return res.status(200).send(info)
   } catch (error) {
     console.error(error)
-    res.status(500).send({ status: "ERROR", message: "An exception occurred" })
+    return res
+      .status(500)
+      .send({ status: "ERROR", message: "An exception occurred" })
   }
 })
 
@@ -79,25 +73,27 @@ app.post(
     if (captchaToken && !(await validateCaptcha(res, captchaToken))) return
 
     try {
-      const challengeKey = getChallengeKey(address)
+      const challengeKey = pow.getChallengeKey(address)
       let {
         challenge,
         challengesNeeded,
         challengeCounter,
         difficulty,
         profile: currentProfile,
-      } = (await getChallenge(challengeKey)) || {}
+      } = (await pow.getChallenge(challengeKey)) || {}
 
       // If no challenge exists or the profile has changed, start a new challenge.
       if (!challenge || profile !== currentProfile) {
         // If a captcha was sent it was validated above.
         const usedCaptcha = CAPTCHA_ENABLED && !!captchaToken
-        ;({ challenge, challengesNeeded, difficulty } = createChallenge(
+
+        challengeCounter = 1
+        ;({ challenge, challengesNeeded, difficulty } = pow.createChallenge(
           usedCaptcha,
           profile
         ))
-        challengeCounter = 1
-        await saveChallenge(challengeKey, {
+
+        await pow.saveChallenge(challengeKey, {
           challenge,
           challengesNeeded,
           challengeCounter,
@@ -125,13 +121,13 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
   try {
     const { address, solution, nonce, profile } = req.body
 
-    if (DISABLE_CHALLENGES) {
+    if (pow.DISABLE_CHALLENGES) {
       await sendTezAndRespond(res, address, profile)
       return
     }
 
-    const challengeKey = getChallengeKey(address)
-    const redisChallenge = await getChallenge(challengeKey)
+    const challengeKey = pow.getChallengeKey(address)
+    const redisChallenge = await pow.getChallenge(challengeKey)
     if (!redisChallenge) {
       return res
         .status(400)
@@ -147,7 +143,7 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
       usedCaptcha,
     } = redisChallenge
 
-    const isValidSolution = verifySolution({
+    const isValidSolution = pow.verifySolution({
       challenge,
       difficulty,
       nonce,
@@ -161,14 +157,14 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
     }
 
     if (challengeCounter < challengesNeeded) {
-      const newChallenge = createChallenge(usedCaptcha, profile)
+      const newChallenge = pow.createChallenge(usedCaptcha, profile)
       const resData = {
         challenge: newChallenge.challenge,
         challengeCounter: challengeCounter + 1,
         difficulty: newChallenge.difficulty,
       }
 
-      await saveChallenge(challengeKey, {
+      await pow.saveChallenge(challengeKey, {
         challengesNeeded: newChallenge.challengesNeeded,
         profile,
         ...resData,

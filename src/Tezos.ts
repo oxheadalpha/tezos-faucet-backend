@@ -1,9 +1,15 @@
 import { InMemorySigner } from "@taquito/signer"
 import { TezosToolkit } from "@taquito/taquito"
 import { Response } from "express"
+import profiles, { Profile } from "./profiles"
 
-import parsedEnv from "./env"
-import { Profile, Profiles } from "./Types"
+export const MAX_BALANCE = process.env.MAX_BALANCE
+  ? Number(process.env.MAX_BALANCE)
+  : 6000
+
+if (isNaN(MAX_BALANCE)) {
+  throw new Error("Env var MAX_BALANCE must be a number.")
+}
 
 // Setup the TezosToolkit to interact with the chain.
 export const Tezos = (() => {
@@ -26,28 +32,6 @@ export const Tezos = (() => {
 
   return TezToolkit
 })()
-
-const defaultUserAmount = 1
-export const USER_PROFILE_AMOUNT =
-  parsedEnv.profile.USER_PROFILE_AMOUNT || defaultUserAmount
-
-const defaultBakerAmount = 6000
-export const BAKER_PROFILE_AMOUNT =
-  parsedEnv.profile.BAKER_PROFILE_AMOUNT || defaultBakerAmount
-
-const defaultMaxBalance = 6000
-export const MAX_BALANCE = parsedEnv.MAX_BALANCE || defaultMaxBalance
-
-export const getTezAmountForProfile = (profile: Profile) => {
-  switch (profile) {
-    case Profiles.USER:
-      return USER_PROFILE_AMOUNT
-    case Profiles.BAKER:
-      return BAKER_PROFILE_AMOUNT
-    default:
-      throw new Error(`Unknown profile '${profile}'`)
-  }
-}
 
 const sendTez = async (
   amount: number,
@@ -78,8 +62,7 @@ export const sendTezAndRespond = async (
   profile: Profile
 ) => {
   try {
-    const amount = getTezAmountForProfile(profile)
-    const txHash = await sendTez(amount, address)
+    const txHash = await sendTez(profiles[profile].amount, address)
 
     if (!txHash) {
       return res
