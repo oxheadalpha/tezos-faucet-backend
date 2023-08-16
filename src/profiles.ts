@@ -16,9 +16,17 @@ const validateProperty = (
   property: keyof ProfileConfig
 ): number => {
   const value = Number(profile[property])
+
   if (isNaN(value)) {
     throw new Error(`Profile '${property}' must be a number`)
   }
+
+  // If the property is 'amount' or if challenges are enabled, then the value of
+  // the property must be greater than 0. If it's not, an error is thrown.
+  if ((property === "amount" || !DISABLE_CHALLENGES) && value <= 0) {
+    throw new Error(`Profile '${property}' must be greater than 0`)
+  }
+
   return value
 }
 
@@ -39,21 +47,12 @@ const validateProfile = (profile: ProfileConfig): ProfileConfig => {
   }, {} as ProfileConfig)
 }
 
-const validatedProfiles = new Proxy(
-  Object.entries(profiles).reduce((acc, [key, profile]) => {
+const validatedProfiles = Object.entries(profiles).reduce(
+  (acc, [key, profile]) => {
     acc[key.toUpperCase()] = validateProfile(profile)
     return acc
-  }, {} as Record<Profile, ProfileConfig>),
-  {
-    get: (target, prop) => {
-      const key = String(prop)
-      if (key in target) {
-        return target[key]
-      } else {
-        throw new Error(`Profile '${key}' does not exist`)
-      }
-    },
-  }
+  },
+  {} as Record<Profile, ProfileConfig>
 )
 
 export default validatedProfiles
