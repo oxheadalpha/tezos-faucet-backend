@@ -1,4 +1,5 @@
 import profiles from "../profiles.json"
+import { DISABLE_CHALLENGES } from "./pow"
 
 export type Profile = string
 
@@ -16,19 +17,21 @@ const validateProperty = (
 ): number => {
   const value = Number(profile[property])
   if (isNaN(value)) {
-    throw new Error(`Profile ${property} must be a number`)
+    throw new Error(`Profile '${property}' must be a number`)
   }
   return value
 }
 
 const validateProfile = (profile: ProfileConfig): ProfileConfig => {
-  const properties: (keyof ProfileConfig)[] = [
-    "amount",
-    "challengesNeeded",
-    "challengesNeededWithCaptcha",
-    "difficulty",
-    "difficultyWithCaptcha",
-  ]
+  const properties: (keyof ProfileConfig)[] = DISABLE_CHALLENGES
+    ? ["amount"]
+    : [
+        "amount",
+        "challengesNeeded",
+        "challengesNeededWithCaptcha",
+        "difficulty",
+        "difficultyWithCaptcha",
+      ]
 
   return properties.reduce((acc, property) => {
     acc[property] = validateProperty(profile, property)
