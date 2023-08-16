@@ -36,7 +36,7 @@ Profiles are configured in the [profiles.json](./profiles.json) file. Each profi
 - `difficulty`: The difficulty level of the challenge if no CAPTCHA is provided. Default for both `USER` and `BAKER`: `5`.
 - `difficultyWithCaptcha`: The difficulty level of the challenge if a valid CAPTCHA is provided. Default for both `USER` and `BAKER`: `4`.
 
-The [src/profiles.ts](src/profiles.ts) file imports this JSON file and validates these properties. If any property is missing or invalid, an error will be thrown.
+The [src/profiles.ts](src/profiles.ts) file imports this JSON file and validates these properties. If any property is missing or invalid, an error will be thrown. If `DISABLE_CHALLENGES` is `true`, only `amount` is required.
 
 Optional:
 
