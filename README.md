@@ -18,7 +18,7 @@ Here's a general flow of how it works:
 
 ## Config
 
-Set environment variables or add them to a `.env` file. See `.env.example`.
+Set environment variables or add them to a `.env` file. See [.env.example](.env.example). The [src/env.ts](src/env.ts) file handles necessary type conversions from environment variable strings.
 
 Mandatory:
 

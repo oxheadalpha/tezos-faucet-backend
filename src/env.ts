@@ -1,5 +1,8 @@
 import "dotenv/config"
 
+// This file is responsible for handling environment variables.
+// It imports all environment variables from process.env and performs necessary type conversions.
+// For some values, it's better to use the converted values from this file instead of process.env directly.
 const { ENABLE_CAPTCHA, DISABLE_CHALLENGES, MAX_BALANCE } = process.env
 
 const env = {
