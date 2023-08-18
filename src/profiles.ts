@@ -1,5 +1,5 @@
+import env  from "./env"
 import profiles from "../profiles.json"
-import { DISABLE_CHALLENGES } from "./pow"
 
 export type Profile = string
 
@@ -23,7 +23,7 @@ const validateProperty = (
 
   // If the property is 'amount' or if challenges are enabled, then the value of
   // the property must be greater than 0. If it's not, an error is thrown.
-  if ((property === "amount" || !DISABLE_CHALLENGES) && value <= 0) {
+  if ((property === "amount" || !env.DISABLE_CHALLENGES) && value <= 0) {
     throw new Error(`Profile '${property}' must be greater than 0`)
   }
 
@@ -31,7 +31,7 @@ const validateProperty = (
 }
 
 const validateProfile = (profile: ProfileConfig): ProfileConfig => {
-  const properties: (keyof ProfileConfig)[] = DISABLE_CHALLENGES
+  const properties: (keyof ProfileConfig)[] = env.DISABLE_CHALLENGES
     ? ["amount"]
     : [
         "amount",

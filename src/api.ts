@@ -1,5 +1,4 @@
-import dotenv from "dotenv"
-dotenv.config()
+import env from "./env"
 
 import bodyParser from "body-parser"
 import express, { Express, Request, Response } from "express"
@@ -7,8 +6,8 @@ import { createClient } from "redis"
 
 import { challengeMiddleware, verifyMiddleware } from "./middleware"
 import { httpLogger } from "./logging"
-import { MAX_BALANCE, Tezos, sendTezAndRespond } from "./Tezos"
-import { validateCaptcha, CAPTCHA_ENABLED } from "./Captcha"
+import { Tezos, sendTezAndRespond } from "./Tezos"
+import { validateCaptcha } from "./Captcha"
 import * as pow from "./pow"
 import profiles, { Profile } from "./profiles"
 import { InfoResponseBody, ProfileInfo } from "./Types"
@@ -51,8 +50,8 @@ app.get("/info", async (_, res: Response) => {
 
     const info: InfoResponseBody = {
       faucetAddress: await Tezos.signer.publicKeyHash(),
-      captchaEnabled: CAPTCHA_ENABLED,
-      maxBalance: MAX_BALANCE,
+      captchaEnabled: env.ENABLE_CAPTCHA,
+      maxBalance: env.MAX_BALANCE,
       profiles: profilesInfo,
     }
     return res.status(200).send(info)
@@ -85,7 +84,7 @@ app.post(
       // If no challenge exists or the profile has changed, start a new challenge.
       if (!challenge || profile !== currentProfile) {
         // If a captcha was sent it was validated above.
-        const usedCaptcha = CAPTCHA_ENABLED && !!captchaToken
+        const usedCaptcha = env.ENABLE_CAPTCHA && !!captchaToken
 
         challengeCounter = 1
         ;({ challenge, challengesNeeded, difficulty } = pow.createChallenge(
@@ -121,7 +120,7 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
   try {
     const { address, solution, nonce, profile } = req.body
 
-    if (pow.DISABLE_CHALLENGES) {
+    if (env.DISABLE_CHALLENGES) {
       await sendTezAndRespond(res, address, profile)
       return
     }

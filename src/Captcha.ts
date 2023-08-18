@@ -1,11 +1,11 @@
 import axios from "axios"
 import { Response } from "express"
 
-export const CAPTCHA_ENABLED = process.env.ENABLE_CAPTCHA !== "false"
+import env from "./env"
 
 export const validateCaptcha = async (res: Response, captchaToken: string) => {
   try {
-    if (!CAPTCHA_ENABLED) {
+    if (!env.ENABLE_CAPTCHA) {
       console.log("Captcha disabled")
       return true
     }
@@ -22,7 +22,7 @@ export const validateCaptcha = async (res: Response, captchaToken: string) => {
         {},
         {
           params: {
-            secret: process.env.CAPTCHA_SECRET,
+            secret: env.CAPTCHA_SECRET,
             response: captchaToken,
           },
         }

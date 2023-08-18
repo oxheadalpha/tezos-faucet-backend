@@ -1,15 +1,15 @@
 import { validateKeyHash } from "@taquito/utils"
 import { Request, Response, NextFunction } from "express"
 
-import { DISABLE_CHALLENGES } from "./pow"
-import profiles, { Profile } from "./profiles"
+import env from "./env"
+import profiles from "./profiles"
 
 const checkChallengesEnabled = (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  if (DISABLE_CHALLENGES) {
+  if (env.DISABLE_CHALLENGES) {
     return res.status(200).send({
       status: "SUCCESS",
       message: "Challenges are disabled. Use the /verify endpoint.",
@@ -73,7 +73,7 @@ const validateChallengeBody = (
 ) => {
   const { solution, nonce } = req.body
 
-  if (!DISABLE_CHALLENGES && (!solution || !nonce)) {
+  if (!env.DISABLE_CHALLENGES && (!solution || !nonce)) {
     return res.status(400).send({
       status: "ERROR",
       message: "'solution', and 'nonce', fields are required",

@@ -3,8 +3,6 @@ import { createHash, randomBytes } from "crypto"
 import { redis } from "./api"
 import profiles, { Profile } from "./profiles"
 
-export const DISABLE_CHALLENGES = process.env.DISABLE_CHALLENGES === 'true'
-
 export const getChallengeKey = (address: string): string => `address:${address}`
 
 const determineDifficulty = (usedCaptcha: boolean, profile: Profile) => {

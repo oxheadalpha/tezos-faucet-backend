@@ -1,26 +1,20 @@
 import { InMemorySigner } from "@taquito/signer"
 import { TezosToolkit } from "@taquito/taquito"
 import { Response } from "express"
+
+import env from "./env"
 import profiles, { Profile } from "./profiles"
-
-export const MAX_BALANCE = process.env.MAX_BALANCE
-  ? Number(process.env.MAX_BALANCE)
-  : 6000
-
-if (isNaN(MAX_BALANCE)) {
-  throw new Error("Env var MAX_BALANCE must be a number.")
-}
 
 // Setup the TezosToolkit to interact with the chain.
 export const Tezos = (() => {
-  const rpcUrl = process.env.RPC_URL
+  const rpcUrl = env.RPC_URL
   if (!rpcUrl) {
     throw new Error("No RPC_URL defined.")
   }
 
   const TezToolkit = new TezosToolkit(rpcUrl)
 
-  const faucetPrivateKey = process.env.FAUCET_PRIVATE_KEY
+  const faucetPrivateKey = env.FAUCET_PRIVATE_KEY
   if (!faucetPrivateKey) {
     throw new Error("No FAUCET_PRIVATE_KEY defined.")
   }
@@ -39,7 +33,7 @@ const sendTez = async (
 ): Promise<string | void> => {
   // Check max balance
   const userBalance = (await Tezos.tz.getBalance(address)).toNumber()
-  if (userBalance > MAX_BALANCE * 1000000) {
+  if (userBalance > env.MAX_BALANCE * 1000000) {
     console.log(
       `${address} balance too high (${userBalance / 1000000}). Not sending.`
     )
