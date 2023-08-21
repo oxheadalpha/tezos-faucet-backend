@@ -1,7 +1,7 @@
 {
-  "name": "tezos-testnet-faucet-backend",
-  "version": "1.0.0",
-  "description": "",
+  "name": "tezos-faucet-backend",
+  "version": "2.0.0",
+  "description": "Tezos Faucet Backend",
   "main": "dist/src/api.js",
   "scripts": {
     "build": "npx tsc",
@@ -11,14 +11,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/oxheadalpha/tezos-testnet-faucet-backend.git"
+    "url": "git+https://github.com/oxheadalpha/tezos-faucet-backend.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/oxheadalpha/tezos-testnet-faucet-backend/issues"
+    "url": "https://github.com/oxheadalpha/tezos-faucet-backend/issues"
   },
-  "homepage": "https://github.com/oxheadalpha/tezos-testnet-faucet-backend#readme",
+  "homepage": "https://github.com/oxheadalpha/tezos-faucet-backend#readme",
   "dependencies": {
     "@taquito/signer": "^17.1.1",
     "@taquito/taquito": "^17.1.1",
