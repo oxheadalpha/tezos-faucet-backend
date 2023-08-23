@@ -34,7 +34,6 @@ app.get("/info", async (_, res: Response) => {
       Object.entries(profiles).map(([profile, profileConfig]) => [
         profile,
         {
-          profile,
           amount: profileConfig.amount,
           currency: "tez",
         },
@@ -44,6 +43,7 @@ app.get("/info", async (_, res: Response) => {
     const info: InfoResponseBody = {
       faucetAddress: await Tezos.signer.publicKeyHash(),
       captchaEnabled: env.ENABLE_CAPTCHA,
+      challengesDisabled: env.DISABLE_CHALLENGES,
       maxBalance: env.MAX_BALANCE,
       profiles: profilesInfo,
     }
