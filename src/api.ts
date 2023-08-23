@@ -2,8 +2,8 @@ import env from "./env"
 
 import bodyParser from "body-parser"
 import express, { Express, Request, Response } from "express"
-import { createClient } from "redis"
 
+import redis from "./redis"
 import { challengeMiddleware, verifyMiddleware } from "./middleware"
 import { httpLogger } from "./logging"
 import { Tezos, sendTezAndRespond } from "./Tezos"
@@ -11,13 +11,6 @@ import { validateCaptcha } from "./Captcha"
 import * as pow from "./pow"
 import profiles, { Profile } from "./profiles"
 import { InfoResponseBody, ProfileInfo } from "./Types"
-
-export const redis = createClient({
-  url: process.env.REDIS_URL,
-  password: process.env.REDIS_PASSWORD,
-})
-  .on("connect", () => console.log("Connected to redis."))
-  .on("error", (err: any) => console.error("Redis Client Error:", err))
 
 const app: Express = express()
 app.use(bodyParser.json())
@@ -174,7 +167,7 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
     // The challenge should be deleted from redis before Tez is sent. If it
     // failed to delete or was already deleted by another request, the user
     // could keep getting Tez with the same solution.
-    const deletedCount = await redis.del(challengeKey).catch((err) => {
+    const deletedCount = await redis.del(challengeKey).catch((err: any) => {
       console.error(`Redis failed to delete ${challengeKey}.`)
       throw err
     })
@@ -198,7 +191,11 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
 
 // Connect to redis, start server, and setup listeners for graceful shutdown.
 ;(async () => {
-  await redis.connect()
+  if (!env.DISABLE_CHALLENGES) {
+    await redis.connect()
+  } else {
+    console.log("Challenges are disabled. Not connecting to redis.")
+  }
 
   const port = process.env.API_PORT || 3000
   const server = app.listen(port, () =>
@@ -208,11 +205,13 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
   const gracefulShutdown = async (signal: string) => {
     console.log(`${signal} signal received`)
 
-    try {
-      await redis.quit()
-      console.log("Redis connection closed.")
-    } catch (err) {
-      console.error("Error closing Redis connection:", err)
+    if (!env.DISABLE_CHALLENGES) {
+      try {
+        await redis.quit()
+        console.log("Redis connection closed.")
+      } catch (err) {
+        console.error("Error closing Redis connection:", err)
+      }
     }
 
     server.close(() => {

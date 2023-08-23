@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "crypto"
 
-import { redis } from "./api"
+import redis from "./redis"
 import profiles, { Profile } from "./profiles"
 
 export const getChallengeKey = (address: string): string => `address:${address}`
