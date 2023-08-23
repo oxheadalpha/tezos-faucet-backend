@@ -1,5 +1,11 @@
-import env  from "./env"
+import env from "./env"
 import profiles from "../profiles.json"
+
+const profileEntries = Object.entries(profiles)
+
+if (!profileEntries.length) {
+  throw new Error("No profiles defined in profiles.json.")
+}
 
 export type Profile = string
 
@@ -47,12 +53,9 @@ const validateProfile = (profile: ProfileConfig): ProfileConfig => {
   }, {} as ProfileConfig)
 }
 
-const validatedProfiles = Object.entries(profiles).reduce(
-  (acc, [key, profile]) => {
-    acc[key.toUpperCase()] = validateProfile(profile)
-    return acc
-  },
-  {} as Record<Profile, ProfileConfig>
-)
+const validatedProfiles = profileEntries.reduce((acc, [key, profile]) => {
+  acc[key.toUpperCase()] = validateProfile(profile)
+  return acc
+}, {} as Record<Profile, ProfileConfig>)
 
 export default validatedProfiles
