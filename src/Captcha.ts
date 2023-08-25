@@ -1,22 +1,43 @@
-import axios from 'axios';
+import axios from "axios"
+import { Response } from "express"
 
-const checkCaptcha = async (responseToken: string) => {
+import env from "./env"
 
-    const enableCaptcha: string = process.env.ENABLE_CAPTCHA || "true";
-
-    if (enableCaptcha === "false") {
-        console.log("Captcha disabled");
-        return true;
+export const validateCaptcha = async (res: Response, captchaToken: string) => {
+  try {
+    if (!env.ENABLE_CAPTCHA) {
+      console.log("Captcha disabled")
+      return true
     }
 
-    const secret = process.env.FAUCET_CAPTCHA_SECRET;
-    const captchaURL = `https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${responseToken}`;
+    if (!captchaToken) {
+      throw new Error("Missing captcha token.")
+    }
 
-    const res = await axios.post(captchaURL);
-    console.log(res.data);
+    const captchaURL = `https://google.com/recaptcha/api/siteverify`
 
-    return res.data.success;
-};
+    const res = (
+      await axios.post(
+        captchaURL,
+        {},
+        {
+          params: {
+            secret: env.CAPTCHA_SECRET,
+            response: captchaToken,
+          },
+        }
+      )
+    ).data
 
+    if (!res.success) {
+      res.status(400).send({ status: "ERROR", message: "Invalid captcha" })
+      return false
+    }
+  } catch (err) {
+    console.error(err)
+    res.status(400).send({ status: "ERROR", message: "Captcha error" })
+    return false
+  }
 
-export { checkCaptcha };
+  return true
+}

@@ -1,0 +1,16 @@
+{
+  "USER": {
+    "amount": 1,
+    "challengesNeeded": 6,
+    "challengesNeededWithCaptcha": 5,
+    "difficulty": 5,
+    "difficultyWithCaptcha": 4
+  },
+  "BAKER": {
+    "amount": 6000,
+    "challengesNeeded": 7,
+    "challengesNeededWithCaptcha": 5,
+    "difficulty": 5,
+    "difficultyWithCaptcha": 4
+  }
+}

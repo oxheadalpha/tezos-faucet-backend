@@ -1,13 +1,18 @@
-FROM node:16-alpine
+FROM node:18-alpine
 
-WORKDIR /tezos-faucet-backend
+USER node
 
-COPY package.json .
+WORKDIR /app
+
+RUN chown node:node /app
+
+COPY --chown=node:node package.json ./
+COPY --chown=node:node package-lock.json ./
 
 RUN npm install
 
-COPY . .
+COPY --chown=node:node . ./
 
-RUN ./node_modules/typescript/bin/tsc -p ./tsconfig.json
+RUN ./node_modules/typescript/bin/tsc
 
-CMD ["node", "./dist/api.js"]
+CMD ["node", "--enable-source-maps", "./dist/src/api.js"]
