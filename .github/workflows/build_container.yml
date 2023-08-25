@@ -33,7 +33,7 @@ jobs:
         tags: |
           type=ref,event=branch
           type=ref,event=pr
-          type=match,pattern=v(.*),group=1
+          type=match,pattern=.*,group=1
     - name: Push container to GHCR
       uses: docker/build-push-action@v2
       with:
