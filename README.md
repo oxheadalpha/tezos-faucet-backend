@@ -126,3 +126,9 @@ The endpoint verifies the solution by trying to regenerate it using the challeng
 If the solution is correct but the required number of challenges have not yet been satisfied, a new challenge is generated and returned in the response.
 
 If all challenges have been completed, the user's address is granted the Tez amount for their profile type. The transaction hash is returned to indicate the transfer was successful.
+
+## Programmatic Faucet Usage
+
+For programmatic usage of the faucet, we provide a `getTez.js` script located in the `/scripts` directory of the frontend repository. Please refer to it for more details on how to use it. This script can be run from a JavaScript program or directly from a shell. It interacts with the backend to request Tez, solve the required challenges, and verify the solutions.
+
+Please note that the `getTez.js` script does not use CAPTCHA. Therefore, when using the programmatic faucet, challenges can be configured to be more difficult and require more of them to be solved.
