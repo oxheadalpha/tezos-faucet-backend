@@ -4,8 +4,20 @@ import { Request, Response, NextFunction } from "express"
 import env from "./env"
 import profiles from "./profiles"
 
+export const cors = (_: Request, res: Response, next: NextFunction) => {
+  const host = process.env.AUTHORIZED_HOST || "*"
+  res
+    .setHeader("Access-Control-Allow-Origin", host)
+    .setHeader("Access-Control-Allow-Methods", "GET, POST")
+    .setHeader(
+      "Access-Control-Allow-Headers",
+      "Origin, X-Requested-With, Content-Type, Accept"
+    )
+  next()
+}
+
 const checkChallengesEnabled = (
-  req: Request,
+  _: Request,
   res: Response,
   next: NextFunction
 ) => {
@@ -18,7 +30,7 @@ const checkChallengesEnabled = (
   next()
 }
 
-const transformBody = (req: Request, res: Response, next: NextFunction) => {
+const transformBody = (req: Request, _: Response, next: NextFunction) => {
   const { profile } = req.body
   if (typeof profile === "string") {
     req.body.profile = req.body.profile.toUpperCase()

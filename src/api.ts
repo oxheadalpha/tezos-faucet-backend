@@ -4,7 +4,7 @@ import bodyParser from "body-parser"
 import express, { Express, Request, Response } from "express"
 
 import redis from "./redis"
-import { challengeMiddleware, verifyMiddleware } from "./middleware"
+import { cors, challengeMiddleware, verifyMiddleware } from "./middleware"
 import { httpLogger } from "./logging"
 import { Tezos, sendTezAndRespond } from "./Tezos"
 import { validateCaptcha } from "./Captcha"
@@ -16,17 +16,7 @@ const app: Express = express()
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 app.use(httpLogger)
-app.use((_, res: Response, next) => {
-  const cors = process.env.AUTHORIZED_HOST || "*"
-  res.setHeader("Access-Control-Allow-Origin", cors)
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST")
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept"
-  )
-
-  next()
-})
+app.use(cors)
 
 app.get("/info", async (_, res: Response) => {
   try {
