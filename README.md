@@ -93,15 +93,14 @@ Example response:
 {
   "faucetAddress": "tz1...",
   "captchaEnabled": true,
+  "challengesEnabled": true,
   "maxBalance": 6000,
   "profiles": {
     "user": {
-      "profile": "USER",
       "amount": 1,
       "currency": "tez"
     },
     "baker": {
-      "profile": "BAKER",
       "amount": 6000,
       "currency": "tez"
     }

@@ -20,7 +20,7 @@ export type ProfileInfo = {
 export type InfoResponseBody = {
   faucetAddress: string
   captchaEnabled: boolean
-  challengesDisabled: boolean
+  challengesEnabled: boolean
   profiles: Record<Profile, ProfileInfo>
   maxBalance: number
 }

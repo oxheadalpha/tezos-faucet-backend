@@ -43,7 +43,7 @@ app.get("/info", async (_, res: Response) => {
     const info: InfoResponseBody = {
       faucetAddress: await Tezos.signer.publicKeyHash(),
       captchaEnabled: env.ENABLE_CAPTCHA,
-      challengesDisabled: env.DISABLE_CHALLENGES,
+      challengesEnabled: !env.DISABLE_CHALLENGES,
       maxBalance: env.MAX_BALANCE,
       profiles: profilesInfo,
     }
