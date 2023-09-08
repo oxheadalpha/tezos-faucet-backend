@@ -3,7 +3,6 @@ import { TezosToolkit } from "@taquito/taquito"
 import { Response } from "express"
 
 import env from "./env"
-import profiles, { Profile } from "./profiles"
 
 // Setup the TezosToolkit to interact with the chain.
 export const Tezos = (() => {
@@ -52,11 +51,11 @@ const sendTez = async (
 
 export const sendTezAndRespond = async (
   res: Response,
-  address: string,
-  profile: Profile
+  amount: number,
+  address: string
 ) => {
   try {
-    const txHash = await sendTez(profiles[profile].amount, address)
+    const txHash = await sendTez(amount, address)
 
     if (!txHash) {
       return res

@@ -1,9 +1,6 @@
-import { Profile } from "./profiles"
-
 export type RequestBody = {
   captchaToken: string
   address: string
-  profile: Profile
 }
 
 export type ResponseBody = {
@@ -21,6 +18,5 @@ export type InfoResponseBody = {
   faucetAddress: string
   captchaEnabled: boolean
   challengesEnabled: boolean
-  profiles: Record<Profile, ProfileInfo>
   maxBalance: number
 }

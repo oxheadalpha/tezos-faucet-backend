@@ -1,7 +1,6 @@
 import { createHash, randomBytes } from "crypto"
 
 import redis from "./redis"
-import profiles, { Profile } from "./profiles"
 import env from "./env"
 
 export const getChallengeKey = (address: string): string => `address:${address}`
@@ -35,8 +34,8 @@ const determineChallengesNeeded = (usedCaptcha: boolean, amount: number) => {
 const generateChallenge = (bytesSize: number = 32) =>
   randomBytes(bytesSize).toString("hex")
 
-export const createChallenge = (usedCaptcha: boolean, profile: Profile) => {
-  const challengesNeeded = determineChallengesNeeded(usedCaptcha, profile)
+export const createChallenge = (usedCaptcha: boolean, amount: number) => {
+  const challengesNeeded = determineChallengesNeeded(usedCaptcha, amount)
   const { challengeSize, difficulty } = determineDifficulty()
   const challenge = generateChallenge(challengeSize)
   return { challenge, challengesNeeded, difficulty }
@@ -48,7 +47,6 @@ interface ChallengeState {
   challengesNeeded: number
   difficulty: number
   usedCaptcha: boolean
-  profile: Profile
 }
 
 type SaveChallengeArgs = Omit<ChallengeState, "usedCaptcha"> & {
@@ -86,7 +84,6 @@ export const getChallenge = async (
     challengesNeeded: Number(data.challengesNeeded),
     difficulty: Number(data.difficulty),
     usedCaptcha: data.usedCaptcha === "true",
-    profile: data.profile satisfies Profile as Profile,
   } satisfies ChallengeState as ChallengeState
 }
 

@@ -2,7 +2,6 @@ import { validateKeyHash } from "@taquito/utils"
 import { Request, Response, NextFunction } from "express"
 
 import env from "./env"
-import profiles from "./profiles"
 
 export const cors = (_: Request, res: Response, next: NextFunction) => {
   const host = process.env.AUTHORIZED_HOST || "*"
@@ -30,14 +29,6 @@ const checkChallengesEnabled = (
   next()
 }
 
-const transformBody = (req: Request, _: Response, next: NextFunction) => {
-  const { profile } = req.body
-  if (typeof profile === "string") {
-    req.body.profile = req.body.profile.toUpperCase()
-  }
-  next()
-}
-
 const validateAddress = (req: Request, res: Response, next: NextFunction) => {
   const { address } = req.body
 
@@ -58,25 +49,6 @@ const validateAddress = (req: Request, res: Response, next: NextFunction) => {
   next()
 }
 
-const validateProfile = (req: Request, res: Response, next: NextFunction) => {
-  const { profile } = req.body
-
-  if (!profile) {
-    return res.status(400).send({
-      status: "ERROR",
-      message: "'profile' field is required",
-    })
-  }
-
-  if (!profiles[profile]) {
-    return res.status(400).send({
-      status: "ERROR",
-      message: `Unknown profile '${profile}'`,
-    })
-  }
-
-  next()
-}
 
 const validateChallengeBody = (
   req: Request,
@@ -97,14 +69,10 @@ const validateChallengeBody = (
 
 export const challengeMiddleware = [
   checkChallengesEnabled,
-  transformBody,
-  validateProfile,
   validateAddress,
 ]
 
 export const verifyMiddleware = [
-  transformBody,
-  validateProfile,
   validateAddress,
   validateChallengeBody,
 ]

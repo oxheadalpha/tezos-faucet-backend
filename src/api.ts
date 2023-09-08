@@ -9,8 +9,7 @@ import { httpLogger } from "./logging"
 import { Tezos, sendTezAndRespond } from "./Tezos"
 import { validateCaptcha } from "./Captcha"
 import * as pow from "./pow"
-import profiles, { Profile } from "./profiles"
-import { InfoResponseBody, ProfileInfo } from "./Types"
+import { InfoResponseBody } from "./Types"
 
 const app: Express = express()
 app.use(bodyParser.json())
@@ -20,22 +19,11 @@ app.use(cors)
 
 app.get("/info", async (_, res: Response) => {
   try {
-    const profilesInfo: Record<Profile, ProfileInfo> = Object.fromEntries(
-      Object.entries(profiles).map(([profile, profileConfig]) => [
-        profile,
-        {
-          amount: profileConfig.amount,
-          currency: "tez",
-        },
-      ])
-    )
-
     const info: InfoResponseBody = {
       faucetAddress: await Tezos.signer.publicKeyHash(),
       captchaEnabled: env.ENABLE_CAPTCHA,
       challengesEnabled: !env.DISABLE_CHALLENGES,
       maxBalance: env.MAX_BALANCE,
-      profiles: profilesInfo,
     }
     return res.status(200).send(info)
   } catch (error) {
@@ -50,30 +38,23 @@ app.post(
   "/challenge",
   challengeMiddleware,
   async (req: Request, res: Response) => {
-    const { address, captchaToken, profile } = req.body
+    const { address, captchaToken } = req.body
 
     if (captchaToken && !(await validateCaptcha(res, captchaToken))) return
 
     try {
       const challengeKey = pow.getChallengeKey(address)
-      let {
-        challenge,
-        challengesNeeded,
-        challengeCounter,
-        difficulty,
-        profile: currentProfile,
-      } = (await pow.getChallenge(challengeKey)) || {}
+      let { challenge, challengesNeeded, challengeCounter, difficulty } =
+        (await pow.getChallenge(challengeKey)) || {}
 
-      // If no challenge exists or the profile has changed, start a new challenge.
-      if (!challenge || profile !== currentProfile) {
+      // If no challenge exists, start a new challenge.
+      if (!challenge) {
         // If a captcha was sent it was validated above.
         const usedCaptcha = env.ENABLE_CAPTCHA && !!captchaToken
 
         challengeCounter = 1
-        ;({ challenge, challengesNeeded, difficulty } = pow.createChallenge(
-          usedCaptcha,
-          profile
-        ))
+        ;({ challenge, challengesNeeded, difficulty } =
+          pow.createChallenge(usedCaptcha))
 
         await pow.saveChallenge(challengeKey, {
           challenge,
@@ -81,7 +62,6 @@ app.post(
           challengeCounter,
           difficulty,
           usedCaptcha,
-          profile,
         })
       }
 
@@ -101,10 +81,10 @@ app.post(
 
 app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
   try {
-    const { address, solution, nonce, profile } = req.body
+    const { address, solution, nonce } = req.body
 
     if (env.DISABLE_CHALLENGES) {
-      await sendTezAndRespond(res, address, profile)
+      await sendTezAndRespond(res, address)
       return
     }
 
@@ -121,7 +101,6 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
       challengesNeeded,
       challengeCounter,
       difficulty,
-      profile: currentProfile,
       usedCaptcha,
     } = redisChallenge
 
@@ -139,7 +118,7 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
     }
 
     if (challengeCounter < challengesNeeded) {
-      const newChallenge = pow.createChallenge(usedCaptcha, profile)
+      const newChallenge = pow.createChallenge(usedCaptcha)
       const resData = {
         challenge: newChallenge.challenge,
         challengeCounter: challengeCounter + 1,
@@ -148,7 +127,6 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
 
       await pow.saveChallenge(challengeKey, {
         challengesNeeded: newChallenge.challengesNeeded,
-        profile,
         ...resData,
       })
       return res.status(200).send({ status: "SUCCESS", ...resData })
@@ -169,7 +147,7 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
         .send({ status: "ERROR", message: "PoW challenge not found" })
     }
 
-    await sendTezAndRespond(res, address, currentProfile)
+    await sendTezAndRespond(res, address)
     return
   } catch (err: any) {
     console.error(err)
