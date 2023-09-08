@@ -2,28 +2,42 @@ import { createHash, randomBytes } from "crypto"
 
 import redis from "./redis"
 import profiles, { Profile } from "./profiles"
+import env from "./env"
 
 export const getChallengeKey = (address: string): string => `address:${address}`
 
-const determineDifficulty = (usedCaptcha: boolean, profile: Profile) => {
+const determineDifficulty = () => {
   const challengeSize = 32
-  const difficulty = usedCaptcha
-    ? profiles[profile].difficultyWithCaptcha
-    : profiles[profile].difficulty
+  const difficulty = env.DIFFICULTY
   return { challengeSize, difficulty }
 }
 
-const determineChallengesNeeded = (usedCaptcha: boolean, profile: Profile) =>
-  usedCaptcha
-    ? profiles[profile].challengesNeededWithCaptcha
-    : profiles[profile].challengesNeeded
+const determineChallengesNeeded = (usedCaptcha: boolean, amount: number) => {
+  const { MIN_TEZ, MAX_TEZ, MIN_CHALLENGES, MAX_CHALLENGES, } = env
+
+  // Calculate the proportion of the requested Tez to the maximum Tez
+  const tezProportion = (amount - MIN_TEZ) / (MAX_TEZ - MIN_TEZ)
+
+  // Calculate the base number of challenges based on the Tez proportion
+  let baseChallenges = (MAX_CHALLENGES - MIN_CHALLENGES) * tezProportion + MIN_CHALLENGES
+
+  // If a captcha was used, reduce the number of challenges
+  if (usedCaptcha) {
+    baseChallenges *= (1 - env.CAPTCHA_CHALLENGES_REDUCTION_RATIO)
+  }
+
+  // Round the number of challenges to the nearest whole number
+  const challenges = Math.ceil(baseChallenges)
+
+  return challenges
+}
 
 const generateChallenge = (bytesSize: number = 32) =>
   randomBytes(bytesSize).toString("hex")
 
 export const createChallenge = (usedCaptcha: boolean, profile: Profile) => {
   const challengesNeeded = determineChallengesNeeded(usedCaptcha, profile)
-  const { challengeSize, difficulty } = determineDifficulty(usedCaptcha, profile)
+  const { challengeSize, difficulty } = determineDifficulty()
   const challenge = generateChallenge(challengeSize)
   return { challenge, challengesNeeded, difficulty }
 }
