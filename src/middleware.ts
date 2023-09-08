@@ -49,6 +49,25 @@ const validateAddress = (req: Request, res: Response, next: NextFunction) => {
   next()
 }
 
+const validateAmount = (req: Request, res: Response, next: NextFunction) => {
+  const amount = Number(req.body.amount)
+
+  if (!amount) {
+    return res.status(400).send({
+      status: "ERROR",
+      message: "'amount' field is required",
+    })
+  }
+
+  if (amount < env.MIN_TEZ || amount > env.MAX_TEZ) {
+    return res.status(400).send({
+      status: "ERROR",
+      message: `The amount '${amount}' is not within the allowed range`,
+    })
+  }
+
+  next()
+}
 
 const validateChallengeBody = (
   req: Request,
@@ -70,9 +89,11 @@ const validateChallengeBody = (
 export const challengeMiddleware = [
   checkChallengesEnabled,
   validateAddress,
+  validateAmount,
 ]
 
 export const verifyMiddleware = [
   validateAddress,
+  validateAmount,
   validateChallengeBody,
 ]

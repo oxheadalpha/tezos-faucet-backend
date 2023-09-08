@@ -38,7 +38,7 @@ app.post(
   "/challenge",
   challengeMiddleware,
   async (req: Request, res: Response) => {
-    const { address, captchaToken } = req.body
+    const { address, amount, captchaToken } = req.body
 
     if (captchaToken && !(await validateCaptcha(res, captchaToken))) return
 
@@ -53,10 +53,13 @@ app.post(
         const usedCaptcha = env.ENABLE_CAPTCHA && !!captchaToken
 
         challengeCounter = 1
-        ;({ challenge, challengesNeeded, difficulty } =
-          pow.createChallenge(usedCaptcha))
+        ;({ challenge, challengesNeeded, difficulty } = pow.createChallenge(
+          amount,
+          usedCaptcha
+        ))
 
         await pow.saveChallenge(challengeKey, {
+          amount,
           challenge,
           challengesNeeded,
           challengeCounter,
@@ -81,10 +84,10 @@ app.post(
 
 app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
   try {
-    const { address, solution, nonce } = req.body
+    const { address, amount, solution, nonce } = req.body
 
     if (env.DISABLE_CHALLENGES) {
-      await sendTezAndRespond(res, address)
+      await sendTezAndRespond(res, address, amount)
       return
     }
 
@@ -97,6 +100,7 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
     }
 
     const {
+      amount: currentAmount,
       challenge,
       challengesNeeded,
       challengeCounter,
@@ -118,7 +122,7 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
     }
 
     if (challengeCounter < challengesNeeded) {
-      const newChallenge = pow.createChallenge(usedCaptcha)
+      const newChallenge = pow.createChallenge(currentAmount, usedCaptcha)
       const resData = {
         challenge: newChallenge.challenge,
         challengeCounter: challengeCounter + 1,
@@ -126,6 +130,7 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
       }
 
       await pow.saveChallenge(challengeKey, {
+        amount: currentAmount,
         challengesNeeded: newChallenge.challengesNeeded,
         ...resData,
       })
@@ -147,7 +152,7 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
         .send({ status: "ERROR", message: "PoW challenge not found" })
     }
 
-    await sendTezAndRespond(res, address)
+    await sendTezAndRespond(res, address, amount)
     return
   } catch (err: any) {
     console.error(err)

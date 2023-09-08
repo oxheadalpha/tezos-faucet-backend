@@ -27,8 +27,8 @@ export const Tezos = (() => {
 })()
 
 const sendTez = async (
-  amount: number,
-  address: string
+  address: string,
+  amount: number
 ): Promise<string | void> => {
   // Check max balance
   const userBalance = (await Tezos.tz.getBalance(address)).toNumber()
@@ -51,11 +51,11 @@ const sendTez = async (
 
 export const sendTezAndRespond = async (
   res: Response,
-  amount: number,
-  address: string
+  address: string,
+  amount: number
 ) => {
   try {
-    const txHash = await sendTez(amount, address)
+    const txHash = await sendTez(address, amount)
 
     if (!txHash) {
       return res

@@ -34,14 +34,15 @@ const determineChallengesNeeded = (usedCaptcha: boolean, amount: number) => {
 const generateChallenge = (bytesSize: number = 32) =>
   randomBytes(bytesSize).toString("hex")
 
-export const createChallenge = (usedCaptcha: boolean, amount: number) => {
+export const createChallenge = (amount: number, usedCaptcha: boolean) => {
   const challengesNeeded = determineChallengesNeeded(usedCaptcha, amount)
   const { challengeSize, difficulty } = determineDifficulty()
   const challenge = generateChallenge(challengeSize)
-  return { challenge, challengesNeeded, difficulty }
+  return { amount, challenge, challengesNeeded, difficulty }
 }
 
 interface ChallengeState {
+  amount: number
   challenge: string
   challengeCounter: number
   challengesNeeded: number
@@ -79,6 +80,7 @@ export const getChallenge = async (
   if (!Object.keys(data).length) return null
 
   return {
+    amount: Number(data.amount),
     challenge: data.challenge,
     challengeCounter: Number(data.challengeCounter),
     challengesNeeded: Number(data.challengesNeeded),
