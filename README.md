@@ -41,6 +41,16 @@ Optional:
 - `CHALLENGE_SIZE`: How many bytes the challenge string should be (default: `32`)
 - `CAPTCHA_CHALLENGES_REDUCTION_RATIO`: A percentage value between 0 and 1, indicating how much easier challenges should be when a captcha is used (default: `0.5`)
 
+### Configuring Challenges
+
+The `MAX_CHALLENGES`, `MIN_CHALLENGES`, `CHALLENGE_SIZE`, `DIFFICULTY`, `MIN_TEZ`, `MAX_TEZ`, and `CAPTCHA_CHALLENGES_REDUCTION_RATIO` environment variables control the number and difficulty of the challenges that a user must solve to receive Tez.
+
+The `DIFFICULTY` variable determines the complexity of each challenge. A higher value will make each challenge more difficult and time-consuming to solve.
+
+The `MAX_CHALLENGES` and `MIN_CHALLENGES` variables determine the maximum and minimum number of challenges that a user must solve to receive the max and min amount of Tez, respectively. The actual number of challenges scales linearly with the amount of Tez requested. The proportion of the requested Tez to the maximum Tez (`MAX_TEZ`) is calculated, and the number of challenges is scaled based on this proportion. If a captcha is used, the number of challenges is reduced by a certain ratio (`CAPTCHA_CHALLENGES_REDUCTION_RATIO`).
+
+For example, assume with a `DIFFICULTY` of 5 and `CHALLENGE_SIZE` of 32 the average time to find a solution is approximately 5 seconds. Therefore, if `MAX_TEZ` is set to 6000 and `MAX_CHALLENGES` is set to 120, it would take a user about 10 minutes (600 seconds) to receive 6000 Tez. If say `CAPTCHA_CHALLENGES_REDUCTION_RATIO=0.5`, then when using CAPTCHA it should take half the time to solve the challenges and receive Tez. The actual time may vary depending on the user's computational resources.
+
 ## Running the API
 
 Install dependencies and compile Typescript sources to `/dist` directory:
