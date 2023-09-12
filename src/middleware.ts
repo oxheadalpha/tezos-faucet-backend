@@ -66,6 +66,7 @@ const validateAmount = (req: Request, res: Response, next: NextFunction) => {
     })
   }
 
+  req.body.amount = amount
   next()
 }
 
@@ -92,8 +93,5 @@ export const challengeMiddleware = [
   validateAmount,
 ]
 
-export const verifyMiddleware = [
-  validateAddress,
-  validateAmount,
-  validateChallengeBody,
-]
+export const verifyMiddleware = [validateAddress, validateChallengeBody]
+env.DISABLE_CHALLENGES && verifyMiddleware.push(validateAmount)

@@ -44,19 +44,25 @@ app.post(
 
     try {
       const challengeKey = pow.getChallengeKey(address)
-      let { challenge, challengesNeeded, challengeCounter, difficulty } =
-        (await pow.getChallenge(challengeKey)) || {}
+      let {
+        amount: currentAmount,
+        challenge,
+        challengesNeeded,
+        challengeCounter,
+        difficulty,
+      } = (await pow.getChallenge(challengeKey)) || {}
 
-      // If no challenge exists, start a new challenge.
-      if (!challenge) {
+      // Create a new challenge if none exists or if the amount has changed.
+      if (!challenge || currentAmount !== amount) {
         // If a captcha was sent it was validated above.
         const usedCaptcha = env.ENABLE_CAPTCHA && !!captchaToken
 
-        challengeCounter = 1
         ;({ challenge, challengesNeeded, difficulty } = pow.createChallenge(
           amount,
           usedCaptcha
         ))
+
+        challengeCounter = challengeCounter || 1
 
         await pow.saveChallenge(challengeKey, {
           amount,
@@ -84,10 +90,10 @@ app.post(
 
 app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
   try {
-    const { address, amount, solution, nonce } = req.body
+    const { address, solution, nonce } = req.body
 
     if (env.DISABLE_CHALLENGES) {
-      await sendTezAndRespond(res, address, amount)
+      await sendTezAndRespond(res, address, req.body.amount)
       return
     }
 
@@ -100,7 +106,7 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
     }
 
     const {
-      amount: currentAmount,
+      amount,
       challenge,
       challengesNeeded,
       challengeCounter,
@@ -122,7 +128,7 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
     }
 
     if (challengeCounter < challengesNeeded) {
-      const newChallenge = pow.createChallenge(currentAmount, usedCaptcha)
+      const newChallenge = pow.createChallenge(amount, usedCaptcha)
       const resData = {
         challenge: newChallenge.challenge,
         challengeCounter: challengeCounter + 1,
@@ -130,8 +136,8 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
       }
 
       await pow.saveChallenge(challengeKey, {
-        amount: currentAmount,
-        challengesNeeded: newChallenge.challengesNeeded,
+        amount,
+        challengesNeeded,
         ...resData,
       })
       return res.status(200).send({ status: "SUCCESS", ...resData })

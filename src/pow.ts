@@ -11,14 +11,14 @@ const determineDifficulty = () => {
   return { challengeSize, difficulty }
 }
 
-const determineChallengesNeeded = (usedCaptcha: boolean, amount: number) => {
+const determineChallengesNeeded = (amount: number, usedCaptcha: boolean) => {
   const { MIN_TEZ, MAX_TEZ, MIN_CHALLENGES, MAX_CHALLENGES, } = env
 
   // Calculate the proportion of the requested Tez to the maximum Tez
   const tezProportion = (amount - MIN_TEZ) / (MAX_TEZ - MIN_TEZ)
 
   // Calculate the base number of challenges based on the Tez proportion
-  let baseChallenges = (MAX_CHALLENGES - MIN_CHALLENGES) * tezProportion + MIN_CHALLENGES
+  let baseChallenges = tezProportion * (MAX_CHALLENGES - MIN_CHALLENGES) + MIN_CHALLENGES
 
   // If a captcha was used, reduce the number of challenges
   if (usedCaptcha) {
@@ -26,19 +26,18 @@ const determineChallengesNeeded = (usedCaptcha: boolean, amount: number) => {
   }
 
   // Round the number of challenges to the nearest whole number
-  const challenges = Math.ceil(baseChallenges)
-
-  return challenges
+  const challengesNeeded = Math.ceil(baseChallenges)
+  return challengesNeeded
 }
 
 const generateChallenge = (bytesSize: number = 32) =>
   randomBytes(bytesSize).toString("hex")
 
 export const createChallenge = (amount: number, usedCaptcha: boolean) => {
-  const challengesNeeded = determineChallengesNeeded(usedCaptcha, amount)
+  const challengesNeeded = determineChallengesNeeded(amount, usedCaptcha)
   const { challengeSize, difficulty } = determineDifficulty()
   const challenge = generateChallenge(challengeSize)
-  return { amount, challenge, challengesNeeded, difficulty }
+  return { challenge, challengesNeeded, difficulty }
 }
 
 interface ChallengeState {
