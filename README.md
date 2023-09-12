@@ -6,8 +6,8 @@ The Tezos Faucet Backend (frontend code [here](https://github.com/oxheadalpha/te
 
 Here's a general flow of how it works:
 
-1. **Requesting Tez**: A user initiates the process by making a request for tez. The backend responds by sending a challenge to the user.
-2. **Solving Challenges**: The user must solve the challenge by finding a correct solution. The complexity of the challenge can vary, and the user doesn't know in advance how many challenges they'll need to solve.
+1. **Requesting Tez**: A user initiates the process by making a request for a certain amount of Tez. The backend responds by sending a challenge to the user.
+2. **Solving Challenges**: The user must solve the challenge by finding a correct solution. The complexity of the challenge can vary, and the number of challenges to be solved scales linearly with the amount of Tez requested.
 3. **Verification & Receiving Tez**: Once the user submits a solution, the backend verifies it. If the solution is correct but there are more challenges to be solved, the user will be sent another challenge. This repeats until all challenges are solved correctly. Only then is the requested Tez granted to the user.
 
 ## Prerequisites
@@ -26,18 +26,6 @@ Mandatory:
 - `CAPTCHA_SECRET`: faucet ReCAPTCHA secret key (mandatory if `ENABLE_CAPTCHA=true`)
 - `RPC_URL`: Tezos node RPC URL to connect to
 
-### Profile Configuration
-
-Profiles are configured in the [profiles.json](./profiles.json) file. Each profile is an object with the following properties:
-
-- `amount`: The amount of Tez to be distributed for the specified profile. Default for `USER`: `1`, for `BAKER`: `6000`.
-- `challengesNeeded`: The number of challenges needed if no CAPTCHA is provided. Default for both `USER` and `BAKER`: `6`.
-- `challengesNeededWithCaptcha`: The number of challenges needed if a valid CAPTCHA is provided. Default for both `USER` and `BAKER`: `5`.
-- `difficulty`: The difficulty level of the challenge if no CAPTCHA is provided. Default for both `USER` and `BAKER`: `5`.
-- `difficultyWithCaptcha`: The difficulty level of the challenge if a valid CAPTCHA is provided. Default for both `USER` and `BAKER`: `4`.
-
-The [src/profiles.ts](src/profiles.ts) file imports this JSON file and validates these properties. If any property is missing or invalid, an error will be thrown. If `DISABLE_CHALLENGES` is `true`, only `amount` is required.
-
 Optional:
 
 - `API_PORT`: API listening port (default: `3000`)
@@ -45,6 +33,13 @@ Optional:
 - `DISABLE_CHALLENGES`: `true` to disable challenges (default: `false`)
 - `ENABLE_CAPTCHA`: `true` to enable ReCAPTCHA, `false` otherwise (default: `true`)
 - `MAX_BALANCE`: maximum address balance beyond which sending of XTZ is refused (default: `6000`)
+- `MIN_TEZ`: Minimum amount of Tez that can be requested (default: `1`)
+- `MAX_TEZ`: Maximum amount of Tez that can be requested (default: `6000`)
+- `MAX_CHALLENGES`: Maximum number of challenges required for the maximum Tez request (default: `120`)
+- `MIN_CHALLENGES`: Minimum number of challenges required for the minimum Tez request (default: `1`)
+- `DIFFICULTY`: Difficulty level for challenges (default: `5`)
+- `CHALLENGE_SIZE`: How many bytes the challenge string should be (default: `32`)
+- `CAPTCHA_CHALLENGES_REDUCTION_RATIO`: A percentage value between 0 and 1, indicating how much easier challenges should be when a captcha is used (default: `0.5`)
 
 ## Running the API
 
@@ -94,37 +89,27 @@ Example response:
   "faucetAddress": "tz1...",
   "captchaEnabled": true,
   "challengesEnabled": true,
-  "maxBalance": 6000,
-  "profiles": {
-    "user": {
-      "amount": 1,
-      "currency": "tez"
-    },
-    "baker": {
-      "amount": 6000,
-      "currency": "tez"
-    }
-  }
+  "maxBalance": 6000
 }
 ```
 
 ### POST /challenge
 
-Initiates the Tez request procedure. The user provides their address, profile type (`BAKER` or `USER`), and captcha token (optional).
+Initiates the Tez request procedure. The user provides their address, the amount of Tez they want, and captcha token (optional).
 
 If a challenge already exists for the user's address in Redis it will be returned in the response. Otherwise the endpoint generates a new challenge and stores it, along with associated data in Redis.
 
-The response contains the challenge string, a challenge counter starting at 1, and the difficulty. The challenge counter indicates the current challenge in a series of Proof of Work challenges that the user must complete. Users aren't privy in advance to the exact number of PoW challenges they'll need to solve to receive the requested Tez.
+The response contains the challenge string, a challenge counter starting at 1, and the difficulty. The challenge counter indicates the current challenge in a series of Proof of Work challenges that the user must complete.
 
 ### POST /verify
 
-Allows users to submit solutions to the challenges. The user provides their address, nonce, solution string, and profile type.
+Allows users to submit solutions to the challenges. The user provides their address, nonce, and solution string.
 
 The endpoint verifies the solution by trying to regenerate it using the challenge string and nonce.
 
 If the solution is correct but the required number of challenges have not yet been satisfied, a new challenge is generated and returned in the response.
 
-If all challenges have been completed, the user's address is granted the Tez amount for their profile type. The transaction hash is returned to indicate the transfer was successful.
+If all challenges have been completed, the user's address is granted the requested amount of Tez. The transaction hash is returned to indicate the transfer was successful.
 
 ## Programmatic Faucet Usage
 

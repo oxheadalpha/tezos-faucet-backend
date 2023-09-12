@@ -13,8 +13,8 @@ declare global {
       RPC_URL: string
       MIN_TEZ: string
       MAX_TEZ: string
-      MAX_CHALLENGES: string
       MIN_CHALLENGES: string
+      MAX_CHALLENGES: string
       CHALLENGE_SIZE: string
       DIFFICULTY: string
       CAPTCHA_CHALLENGES_REDUCTION_RATIO: string
