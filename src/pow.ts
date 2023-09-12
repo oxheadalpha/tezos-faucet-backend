@@ -6,7 +6,7 @@ import env from "./env"
 export const getChallengeKey = (address: string): string => `address:${address}`
 
 const determineDifficulty = () => {
-  const challengeSize = 32
+  const challengeSize = env.CHALLENGE_SIZE
   const difficulty = env.DIFFICULTY
   return { challengeSize, difficulty }
 }

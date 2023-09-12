@@ -11,6 +11,7 @@ const {
   MAX_TEZ,
   MAX_CHALLENGES,
   MIN_CHALLENGES,
+  CHALLENGE_SIZE,
   DIFFICULTY,
   CAPTCHA_CHALLENGES_REDUCTION_RATIO,
 } = process.env
@@ -24,30 +25,34 @@ const env = {
   MIN_TEZ: MIN_TEZ ? Number(MIN_TEZ) : 1,
   MAX_CHALLENGES: MAX_CHALLENGES ? Number(MAX_CHALLENGES) : 120,
   MIN_CHALLENGES: MIN_CHALLENGES ? Number(MIN_CHALLENGES) : 1,
+  CHALLENGE_SIZE: CHALLENGE_SIZE ? Number(CHALLENGE_SIZE) : 32,
   DIFFICULTY: DIFFICULTY ? Number(DIFFICULTY) : 5,
   CAPTCHA_CHALLENGES_REDUCTION_RATIO: CAPTCHA_CHALLENGES_REDUCTION_RATIO
     ? Number(CAPTCHA_CHALLENGES_REDUCTION_RATIO)
     : 0.5,
 }
 
-;[
-  env.CAPTCHA_CHALLENGES_REDUCTION_RATIO,
-  env.DIFFICULTY,
-  env.MAX_BALANCE,
-  env.MAX_CHALLENGES,
-  env.MAX_TEZ,
-  env.MIN_CHALLENGES,
-  env.MIN_TEZ,
-].forEach((v) => {
-  if (isNaN(v))
-    throw new Error(
-      "Env vars MAX_BALANCE, MIN_TEZ, MAX_TEZ, AVG_SOLUTION_TIME, MAX_CHALLENGES, MIN_CHALLENGES, DIFFICULTY, CAPTCHA_CHALLENGES_REDUCTION_RATIO must be numbers."
-    )
-})
+const vars: (keyof typeof env)[] = [
+  "CAPTCHA_CHALLENGES_REDUCTION_RATIO",
+  "CHALLENGE_SIZE",
+  "DIFFICULTY",
+  "MAX_BALANCE",
+  "MAX_TEZ",
+  "MIN_TEZ",
+  "MAX_CHALLENGES",
+  "MIN_CHALLENGES",
+]
 
-if (env.DIFFICULTY <= 0) {
-  throw new Error("Env var DIFFICULTY must be greater than 0.")
-}
+vars.forEach((v) => {
+  const value: any = env[v]
+  if (isNaN(value)) throw new Error(`Env var ${v} must be a number.`)
+
+  if (["CHALLENGE_SIZE", "DIFFICULTY"].includes(v)) {
+   if (value <= 0) {
+    throw new Error(`Env var ${v} must be greater than 0.`)
+   }
+  }
+})
 
 if (
   env.CAPTCHA_CHALLENGES_REDUCTION_RATIO < 0 ||
