@@ -24,6 +24,8 @@ app.get("/info", async (_, res: Response) => {
       captchaEnabled: env.ENABLE_CAPTCHA,
       challengesEnabled: !env.DISABLE_CHALLENGES,
       maxBalance: env.MAX_BALANCE,
+      minTez: env.MIN_TEZ,
+      maxTez: env.MAX_TEZ,
     }
     return res.status(200).send(info)
   } catch (error) {

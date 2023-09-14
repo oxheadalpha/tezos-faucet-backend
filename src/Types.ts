@@ -19,4 +19,6 @@ export type InfoResponseBody = {
   captchaEnabled: boolean
   challengesEnabled: boolean
   maxBalance: number
+  minTez: number,
+  maxTez: number
 }
