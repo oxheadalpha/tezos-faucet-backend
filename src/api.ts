@@ -80,6 +80,7 @@ app.post(
         status: "SUCCESS",
         challenge,
         challengeCounter,
+        challengesNeeded,
         difficulty,
       })
     } catch (err: any) {
@@ -134,12 +135,12 @@ app.post("/verify", verifyMiddleware, async (req: Request, res: Response) => {
       const resData = {
         challenge: newChallenge.challenge,
         challengeCounter: challengeCounter + 1,
+        challengesNeeded,
         difficulty: newChallenge.difficulty,
       }
 
       await pow.saveChallenge(challengeKey, {
         amount,
-        challengesNeeded,
         ...resData,
       })
       return res.status(200).send({ status: "SUCCESS", ...resData })
