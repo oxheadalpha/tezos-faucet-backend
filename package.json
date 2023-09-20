@@ -5,7 +5,7 @@
   "main": "dist/src/api.js",
   "scripts": {
     "build": "npx tsc",
-    "dev": "nodemon -e ts --exec \"npx tsc && npm run start\"",
+    "dev": "nodemon -e ts --exec \"npx tsc && npm run start || exit 1\"",
     "start": "node --enable-source-maps dist/src/api.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -14,7 +14,7 @@
     "url": "git+https://github.com/oxheadalpha/tezos-faucet-backend.git"
   },
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/oxheadalpha/tezos-faucet-backend/issues"
   },
