@@ -1,8 +1,10 @@
 import { InMemorySigner } from "@taquito/signer"
 import { TezosToolkit } from "@taquito/taquito"
-import { Response } from "express"
+import { format } from "@taquito/utils"
 
 import env from "./env"
+
+import { Response } from "express"
 
 // Setup the TezosToolkit to interact with the chain.
 export const Tezos = (() => {
@@ -31,11 +33,11 @@ const sendTez = async (
   amount: number
 ): Promise<string | void> => {
   // Check max balance
-  const userBalance = (await Tezos.tz.getBalance(address)).toNumber()
-  if (userBalance > env.MAX_BALANCE * 1000000) {
-    console.log(
-      `${address} balance too high (${userBalance / 1000000}). Not sending.`
-    )
+  const userBalanceMutez = await Tezos.tz.getBalance(address)
+  const userBalance = Number(format("mutez", "tz", userBalanceMutez).valueOf())
+
+  if (userBalance + amount > env.MAX_BALANCE) {
+    console.log(`${address} balance too high (${userBalance}). Not sending.`)
     return
   }
 
