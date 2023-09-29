@@ -1,9 +1,6 @@
-import { Profile } from "./profiles"
-
 export type RequestBody = {
   captchaToken: string
   address: string
-  profile: Profile
 }
 
 export type ResponseBody = {
@@ -12,15 +9,11 @@ export type ResponseBody = {
   message?: string
 }
 
-export type ProfileInfo = {
-  amount: number
-  currency: string
-}
-
 export type InfoResponseBody = {
   faucetAddress: string
   captchaEnabled: boolean
-  challengesDisabled: boolean
-  profiles: Record<Profile, ProfileInfo>
+  challengesEnabled: boolean
   maxBalance: number
+  minTez: number,
+  maxTez: number
 }

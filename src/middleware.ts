@@ -2,10 +2,21 @@ import { validateKeyHash } from "@taquito/utils"
 import { Request, Response, NextFunction } from "express"
 
 import env from "./env"
-import profiles from "./profiles"
+
+export const cors = (_: Request, res: Response, next: NextFunction) => {
+  const host = process.env.AUTHORIZED_HOST || "*"
+  res
+    .setHeader("Access-Control-Allow-Origin", host)
+    .setHeader("Access-Control-Allow-Methods", "GET, POST")
+    .setHeader(
+      "Access-Control-Allow-Headers",
+      "Origin, X-Requested-With, Content-Type, Accept"
+    )
+  next()
+}
 
 const checkChallengesEnabled = (
-  req: Request,
+  _: Request,
   res: Response,
   next: NextFunction
 ) => {
@@ -14,14 +25,6 @@ const checkChallengesEnabled = (
       status: "SUCCESS",
       message: "Challenges are disabled. Use the /verify endpoint.",
     })
-  }
-  next()
-}
-
-const transformBody = (req: Request, res: Response, next: NextFunction) => {
-  const { profile } = req.body
-  if (typeof profile === "string") {
-    req.body.profile = req.body.profile.toUpperCase()
   }
   next()
 }
@@ -46,23 +49,24 @@ const validateAddress = (req: Request, res: Response, next: NextFunction) => {
   next()
 }
 
-const validateProfile = (req: Request, res: Response, next: NextFunction) => {
-  const { profile } = req.body
+const validateAmount = (req: Request, res: Response, next: NextFunction) => {
+  const amount = Number(req.body.amount)
 
-  if (!profile) {
+  if (!amount) {
     return res.status(400).send({
       status: "ERROR",
-      message: "'profile' field is required",
+      message: "'amount' field is required",
     })
   }
 
-  if (!profiles[profile]) {
+  if (amount < env.MIN_TEZ || amount > env.MAX_TEZ) {
     return res.status(400).send({
       status: "ERROR",
-      message: `Unknown profile '${profile}'`,
+      message: `The amount '${amount}' is not within the allowed range`,
     })
   }
 
+  req.body.amount = amount
   next()
 }
 
@@ -85,14 +89,9 @@ const validateChallengeBody = (
 
 export const challengeMiddleware = [
   checkChallengesEnabled,
-  transformBody,
-  validateProfile,
   validateAddress,
+  validateAmount,
 ]
 
-export const verifyMiddleware = [
-  transformBody,
-  validateProfile,
-  validateAddress,
-  validateChallengeBody,
-]
+export const verifyMiddleware = [validateAddress, validateChallengeBody]
+env.DISABLE_CHALLENGES && verifyMiddleware.push(validateAmount)

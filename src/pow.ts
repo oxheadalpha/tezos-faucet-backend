@@ -1,40 +1,46 @@
 import { createHash, randomBytes } from "crypto"
 
 import redis from "./redis"
-import profiles, { Profile } from "./profiles"
+import env from "./env"
 
 export const getChallengeKey = (address: string): string => `address:${address}`
 
-const determineDifficulty = (usedCaptcha: boolean, profile: Profile) => {
-  const challengeSize = 32
-  const difficulty = usedCaptcha
-    ? profiles[profile].difficultyWithCaptcha
-    : profiles[profile].difficulty
+const determineDifficulty = () => {
+  const challengeSize = env.CHALLENGE_SIZE
+  const difficulty = env.DIFFICULTY
   return { challengeSize, difficulty }
 }
 
-const determineChallengesNeeded = (usedCaptcha: boolean, profile: Profile) =>
-  usedCaptcha
-    ? profiles[profile].challengesNeededWithCaptcha
-    : profiles[profile].challengesNeeded
+const determineChallengesNeeded = (amount: number, usedCaptcha: boolean) => {
+  const { MIN_TEZ, MAX_TEZ, MIN_CHALLENGES, MAX_CHALLENGES, MAX_CHALLENGES_WITH_CAPTCHA } = env
+
+  // Calculate the proportion of the requested Tez to the maximum Tez
+  const tezProportion = (amount - MIN_TEZ) / (MAX_TEZ - MIN_TEZ)
+
+  // Calculate the base number of challenges based on the Tez proportion and whether a captcha was used
+  const maxChallenges = usedCaptcha ? MAX_CHALLENGES_WITH_CAPTCHA : MAX_CHALLENGES
+  const challengesNeeded = Math.ceil(tezProportion * (maxChallenges - MIN_CHALLENGES) + MIN_CHALLENGES)
+
+  return challengesNeeded
+}
 
 const generateChallenge = (bytesSize: number = 32) =>
   randomBytes(bytesSize).toString("hex")
 
-export const createChallenge = (usedCaptcha: boolean, profile: Profile) => {
-  const challengesNeeded = determineChallengesNeeded(usedCaptcha, profile)
-  const { challengeSize, difficulty } = determineDifficulty(usedCaptcha, profile)
+export const createChallenge = (amount: number, usedCaptcha: boolean) => {
+  const challengesNeeded = determineChallengesNeeded(amount, usedCaptcha)
+  const { challengeSize, difficulty } = determineDifficulty()
   const challenge = generateChallenge(challengeSize)
   return { challenge, challengesNeeded, difficulty }
 }
 
 interface ChallengeState {
+  amount: number
   challenge: string
   challengeCounter: number
   challengesNeeded: number
   difficulty: number
   usedCaptcha: boolean
-  profile: Profile
 }
 
 type SaveChallengeArgs = Omit<ChallengeState, "usedCaptcha"> & {
@@ -67,12 +73,12 @@ export const getChallenge = async (
   if (!Object.keys(data).length) return null
 
   return {
+    amount: Number(data.amount),
     challenge: data.challenge,
     challengeCounter: Number(data.challengeCounter),
     challengesNeeded: Number(data.challengesNeeded),
     difficulty: Number(data.difficulty),
     usedCaptcha: data.usedCaptcha === "true",
-    profile: data.profile satisfies Profile as Profile,
   } satisfies ChallengeState as ChallengeState
 }
 

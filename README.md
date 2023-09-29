@@ -6,9 +6,15 @@ The Tezos Faucet Backend (frontend code [here](https://github.com/oxheadalpha/te
 
 Here's a general flow of how it works:
 
-1. **Requesting Tez**: A user initiates the process by making a request for tez. The backend responds by sending a challenge to the user.
-2. **Solving Challenges**: The user must solve the challenge by finding a correct solution. The complexity of the challenge can vary, and the user doesn't know in advance how many challenges they'll need to solve.
+1. **Requesting Tez**: A user initiates the process by making a request for a certain amount of Tez. The backend responds by sending a challenge to the user.
+2. **Solving Challenges**: The user must solve the challenge by finding a correct solution. The complexity of the challenge can vary, and the number of challenges to be solved scales linearly with the amount of Tez requested.
 3. **Verification & Receiving Tez**: Once the user submits a solution, the backend verifies it. If the solution is correct but there are more challenges to be solved, the user will be sent another challenge. This repeats until all challenges are solved correctly. Only then is the requested Tez granted to the user.
+
+## Programmatic Faucet Usage
+
+For programmatic usage of the faucet, we provide an npm package `@oxheadalpha/get-tez`. The code can be found [here](https://github.com/oxheadalpha/tezos-faucet/tree/main/getTez). Please refer to it for more details on how to use it. This script can be run from a JavaScript program or directly from a shell. It interacts with the backend to request Tez, solve the required challenges, and verify the solutions.
+
+Please note that the programmatic faucet code does not use CAPTCHA and so more challenges can be given when using it.
 
 ## Prerequisites
 
@@ -26,18 +32,6 @@ Mandatory:
 - `CAPTCHA_SECRET`: faucet ReCAPTCHA secret key (mandatory if `ENABLE_CAPTCHA=true`)
 - `RPC_URL`: Tezos node RPC URL to connect to
 
-### Profile Configuration
-
-Profiles are configured in the [profiles.json](./profiles.json) file. Each profile is an object with the following properties:
-
-- `amount`: The amount of Tez to be distributed for the specified profile. Default for `USER`: `1`, for `BAKER`: `6000`.
-- `challengesNeeded`: The number of challenges needed if no CAPTCHA is provided. Default for both `USER` and `BAKER`: `6`.
-- `challengesNeededWithCaptcha`: The number of challenges needed if a valid CAPTCHA is provided. Default for both `USER` and `BAKER`: `5`.
-- `difficulty`: The difficulty level of the challenge if no CAPTCHA is provided. Default for both `USER` and `BAKER`: `5`.
-- `difficultyWithCaptcha`: The difficulty level of the challenge if a valid CAPTCHA is provided. Default for both `USER` and `BAKER`: `4`.
-
-The [src/profiles.ts](src/profiles.ts) file imports this JSON file and validates these properties. If any property is missing or invalid, an error will be thrown. If `DISABLE_CHALLENGES` is `true`, only `amount` is required.
-
 Optional:
 
 - `API_PORT`: API listening port (default: `3000`)
@@ -45,6 +39,23 @@ Optional:
 - `DISABLE_CHALLENGES`: `true` to disable challenges (default: `false`)
 - `ENABLE_CAPTCHA`: `true` to enable ReCAPTCHA, `false` otherwise (default: `true`)
 - `MAX_BALANCE`: maximum address balance beyond which sending of XTZ is refused (default: `6000`)
+- `MIN_TEZ`: Minimum amount of Tez that can be requested (default: `1`)
+- `MAX_TEZ`: Maximum amount of Tez that can be requested (default: `6000`)
+- `DIFFICULTY`: Difficulty level for challenges (default: `4`)
+- `CHALLENGE_SIZE`: How many bytes the challenge string should be (default: `2048`)
+- `MIN_CHALLENGES`: Minimum number of challenges required for the minimum Tez request (default: `1`)
+- `MAX_CHALLENGES`: Maximum number of challenges required for the maximum Tez request (default: `550`)
+- `MAX_CHALLENGES_WITH_CAPTCHA`: Maximum number of challenges required for the maximum Tez request when a captcha is used (default: `66`)
+
+### Configuring Challenges
+
+The `MAX_CHALLENGES`, `MIN_CHALLENGES`, `CHALLENGE_SIZE`, `DIFFICULTY`, `MIN_TEZ`, `MAX_TEZ`, and `MAX_CHALLENGES_WITH_CAPTCHA` environment variables control the number and difficulty of the challenges that a user must solve to receive Tez.
+
+The `DIFFICULTY` variable determines the complexity of each challenge. A higher value will make each challenge more difficult and time-consuming to solve.
+
+The `MAX_CHALLENGES` and `MIN_CHALLENGES` variables determine the maximum and minimum number of challenges that a user must solve to receive the max and min amount of Tez, respectively. The actual number of challenges scales linearly with the amount of Tez requested. The proportion of the requested Tez to the maximum Tez (`MAX_TEZ` or `MAX_CHALLENGES_WITH_CAPTCHA` if captcha is used) is calculated, and the number of challenges is scaled based on this proportion.
+
+For example, assume with a `DIFFICULTY` of 4 and `CHALLENGE_SIZE` of 2048 the average time to find a solution is approximately 1.09 seconds when using the `get-tez` script from the CLI or in a Node.js program, and approximately 4.6 seconds when solving challenges in the browser with the faucet frontend. Therefore, if `MAX_TEZ` is set to 6000 and `MAX_CHALLENGES` is set to 550, it would take a user about 10 minutes (600 seconds) to receive 6000 Tez when using the `get-tez` script. With `MAX_CHALLENGES_WITH_CAPTCHA` set to 66, when using CAPTCHA via the browser it should take about 5 minutes to solve the challenges and receive Tez. The actual time may vary a bit depending on the user's computational resources.
 
 ## Running the API
 
@@ -85,7 +96,7 @@ docker run -p 3000:3000 tezos-faucet-backend
 
 ### GET /info
 
-Returns general information about the faucet, including the faucet's address, whether captcha is enabled, the max balance allowed, and the Tez amounts granted per profile.
+Returns general information about the faucet, including the faucet's address, whether captcha is enabled, the max balance allowed, and the min and max Tez amounts.
 
 Example response:
 
@@ -93,42 +104,27 @@ Example response:
 {
   "faucetAddress": "tz1...",
   "captchaEnabled": true,
+  "challengesEnabled": true,
   "maxBalance": 6000,
-  "profiles": {
-    "user": {
-      "profile": "USER",
-      "amount": 1,
-      "currency": "tez"
-    },
-    "baker": {
-      "profile": "BAKER",
-      "amount": 6000,
-      "currency": "tez"
-    }
-  }
+  "minTez": 1,
+  "maxTez": 6000
 }
 ```
 
 ### POST /challenge
 
-Initiates the Tez request procedure. The user provides their address, profile type (`BAKER` or `USER`), and captcha token (optional).
+Initiates the Tez request procedure. The user provides their address, the amount of Tez they want, and captcha token (optional).
 
 If a challenge already exists for the user's address in Redis it will be returned in the response. Otherwise the endpoint generates a new challenge and stores it, along with associated data in Redis.
 
-The response contains the challenge string, a challenge counter starting at 1, and the difficulty. The challenge counter indicates the current challenge in a series of Proof of Work challenges that the user must complete. Users aren't privy in advance to the exact number of PoW challenges they'll need to solve to receive the requested Tez.
+The response contains the challenge string, a challenge counter starting at 1, and the difficulty. The challenge counter indicates the current challenge in a series of Proof of Work challenges that the user must complete.
 
 ### POST /verify
 
-Allows users to submit solutions to the challenges. The user provides their address, nonce, solution string, and profile type.
+Allows users to submit solutions to the challenges. The user provides their address, nonce, and solution string.
 
 The endpoint verifies the solution by trying to regenerate it using the challenge string and nonce.
 
 If the solution is correct but the required number of challenges have not yet been satisfied, a new challenge is generated and returned in the response.
 
-If all challenges have been completed, the user's address is granted the Tez amount for their profile type. The transaction hash is returned to indicate the transfer was successful.
-
-## Programmatic Faucet Usage
-
-For programmatic usage of the faucet, we provide a `getTez.js` script located in the `/scripts` directory of the frontend repository. Please refer to it for more details on how to use it. This script can be run from a JavaScript program or directly from a shell. It interacts with the backend to request Tez, solve the required challenges, and verify the solutions.
-
-Please note that the `getTez.js` script does not use CAPTCHA. Therefore, when using the programmatic faucet, challenges can be configured to be more difficult and require more of them to be solved.
+If all challenges have been completed, the user's address is granted the requested amount of Tez. The transaction hash is returned to indicate the transfer was successful.
