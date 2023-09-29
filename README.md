@@ -12,9 +12,9 @@ Here's a general flow of how it works:
 
 ## Programmatic Faucet Usage
 
-For programmatic usage of the faucet, we provide a `getTez.js` script located in the `/scripts` directory of the frontend repository. Please refer to it for more details on how to use it. This script can be run from a JavaScript program or directly from a shell. It interacts with the backend to request Tez, solve the required challenges, and verify the solutions.
+For programmatic usage of the faucet, we provide an npm package `@oxheadalpha/get-tez`. The code can be found [here](https://github.com/oxheadalpha/tezos-faucet/tree/main/getTez). Please refer to it for more details on how to use it. This script can be run from a JavaScript program or directly from a shell. It interacts with the backend to request Tez, solve the required challenges, and verify the solutions.
 
-Please note that the `getTez.js` script does not use CAPTCHA. Therefore, when using the programmatic faucet, more challenges can be given.
+Please note that the programmatic faucet code does not use CAPTCHA and so more challenges can be given when using it.
 
 ## Prerequisites
 
@@ -55,7 +55,7 @@ The `DIFFICULTY` variable determines the complexity of each challenge. A higher 
 
 The `MAX_CHALLENGES` and `MIN_CHALLENGES` variables determine the maximum and minimum number of challenges that a user must solve to receive the max and min amount of Tez, respectively. The actual number of challenges scales linearly with the amount of Tez requested. The proportion of the requested Tez to the maximum Tez (`MAX_TEZ` or `MAX_CHALLENGES_WITH_CAPTCHA` if captcha is used) is calculated, and the number of challenges is scaled based on this proportion.
 
-For example, assume with a `DIFFICULTY` of 4 and `CHALLENGE_SIZE` of 2048 the average time to find a solution is approximately 1.09 seconds when using the `getTez` script from the CLI or in a Node.js program, and approximately 4.6 seconds when solving challenges in the browser with the faucet frontend. Therefore, if `MAX_TEZ` is set to 6000 and `MAX_CHALLENGES` is set to 550, it would take a user about 10 minutes (600 seconds) to receive 6000 Tez when using the `getTez` script. With `MAX_CHALLENGES_WITH_CAPTCHA` set to 66, then when using CAPTCHA via the browser it should take about 5 minutes to solve the challenges and receive Tez. The actual time may vary a bit depending on the user's computational resources.
+For example, assume with a `DIFFICULTY` of 4 and `CHALLENGE_SIZE` of 2048 the average time to find a solution is approximately 1.09 seconds when using the `get-tez` script from the CLI or in a Node.js program, and approximately 4.6 seconds when solving challenges in the browser with the faucet frontend. Therefore, if `MAX_TEZ` is set to 6000 and `MAX_CHALLENGES` is set to 550, it would take a user about 10 minutes (600 seconds) to receive 6000 Tez when using the `get-tez` script. With `MAX_CHALLENGES_WITH_CAPTCHA` set to 66, when using CAPTCHA via the browser it should take about 5 minutes to solve the challenges and receive Tez. The actual time may vary a bit depending on the user's computational resources.
 
 ## Running the API
 
