@@ -9,11 +9,6 @@ export type ResponseBody = {
   message?: string
 }
 
-export type ProfileInfo = {
-  amount: number
-  currency: string
-}
-
 export type InfoResponseBody = {
   faucetAddress: string
   captchaEnabled: boolean

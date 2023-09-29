@@ -96,7 +96,7 @@ docker run -p 3000:3000 tezos-faucet-backend
 
 ### GET /info
 
-Returns general information about the faucet, including the faucet's address, whether captcha is enabled, the max balance allowed, and the Tez amounts granted per profile.
+Returns general information about the faucet, including the faucet's address, whether captcha is enabled, the max balance allowed, and the min and max Tez amounts.
 
 Example response:
 
@@ -105,7 +105,9 @@ Example response:
   "faucetAddress": "tz1...",
   "captchaEnabled": true,
   "challengesEnabled": true,
-  "maxBalance": 6000
+  "maxBalance": 6000,
+  "minTez": 1,
+  "maxTez": 6000
 }
 ```
 
