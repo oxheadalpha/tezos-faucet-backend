@@ -10,6 +10,12 @@ Here's a general flow of how it works:
 2. **Solving Challenges**: The user must solve the challenge by finding a correct solution. The complexity of the challenge can vary, and the number of challenges to be solved scales linearly with the amount of Tez requested.
 3. **Verification & Receiving Tez**: Once the user submits a solution, the backend verifies it. If the solution is correct but there are more challenges to be solved, the user will be sent another challenge. This repeats until all challenges are solved correctly. Only then is the requested Tez granted to the user.
 
+## Programmatic Faucet Usage
+
+For programmatic usage of the faucet, we provide a `getTez.js` script located in the `/scripts` directory of the frontend repository. Please refer to it for more details on how to use it. This script can be run from a JavaScript program or directly from a shell. It interacts with the backend to request Tez, solve the required challenges, and verify the solutions.
+
+Please note that the `getTez.js` script does not use CAPTCHA. Therefore, when using the programmatic faucet, more challenges can be given.
+
 ## Prerequisites
 
 - **Node.js** v18
@@ -35,21 +41,21 @@ Optional:
 - `MAX_BALANCE`: maximum address balance beyond which sending of XTZ is refused (default: `6000`)
 - `MIN_TEZ`: Minimum amount of Tez that can be requested (default: `1`)
 - `MAX_TEZ`: Maximum amount of Tez that can be requested (default: `6000`)
-- `MAX_CHALLENGES`: Maximum number of challenges required for the maximum Tez request (default: `120`)
+- `DIFFICULTY`: Difficulty level for challenges (default: `4`)
+- `CHALLENGE_SIZE`: How many bytes the challenge string should be (default: `2048`)
 - `MIN_CHALLENGES`: Minimum number of challenges required for the minimum Tez request (default: `1`)
-- `DIFFICULTY`: Difficulty level for challenges (default: `5`)
-- `CHALLENGE_SIZE`: How many bytes the challenge string should be (default: `32`)
-- `CAPTCHA_CHALLENGES_REDUCTION_RATIO`: A percentage value between 0 and 1, indicating how much easier challenges should be when a captcha is used (default: `0.5`)
+- `MAX_CHALLENGES`: Maximum number of challenges required for the maximum Tez request (default: `120`)
+- `MAX_CHALLENGES_WITH_CAPTCHA`: Maximum number of challenges required for the maximum Tez request when a captcha is used (default: `66`)
 
 ### Configuring Challenges
 
-The `MAX_CHALLENGES`, `MIN_CHALLENGES`, `CHALLENGE_SIZE`, `DIFFICULTY`, `MIN_TEZ`, `MAX_TEZ`, and `CAPTCHA_CHALLENGES_REDUCTION_RATIO` environment variables control the number and difficulty of the challenges that a user must solve to receive Tez.
+The `MAX_CHALLENGES`, `MIN_CHALLENGES`, `CHALLENGE_SIZE`, `DIFFICULTY`, `MIN_TEZ`, `MAX_TEZ`, and `MAX_CHALLENGES_WITH_CAPTCHA` environment variables control the number and difficulty of the challenges that a user must solve to receive Tez.
 
 The `DIFFICULTY` variable determines the complexity of each challenge. A higher value will make each challenge more difficult and time-consuming to solve.
 
-The `MAX_CHALLENGES` and `MIN_CHALLENGES` variables determine the maximum and minimum number of challenges that a user must solve to receive the max and min amount of Tez, respectively. The actual number of challenges scales linearly with the amount of Tez requested. The proportion of the requested Tez to the maximum Tez (`MAX_TEZ`) is calculated, and the number of challenges is scaled based on this proportion. If a captcha is used, the number of challenges is reduced by a certain ratio (`CAPTCHA_CHALLENGES_REDUCTION_RATIO`).
+The `MAX_CHALLENGES` and `MIN_CHALLENGES` variables determine the maximum and minimum number of challenges that a user must solve to receive the max and min amount of Tez, respectively. The actual number of challenges scales linearly with the amount of Tez requested. The proportion of the requested Tez to the maximum Tez (`MAX_TEZ` or `MAX_CHALLENGES_WITH_CAPTCHA` if captcha is used) is calculated, and the number of challenges is scaled based on this proportion.
 
-For example, assume with a `DIFFICULTY` of 5 and `CHALLENGE_SIZE` of 32 the average time to find a solution is approximately 5 seconds. Therefore, if `MAX_TEZ` is set to 6000 and `MAX_CHALLENGES` is set to 120, it would take a user about 10 minutes (600 seconds) to receive 6000 Tez. If say `CAPTCHA_CHALLENGES_REDUCTION_RATIO=0.5`, then when using CAPTCHA it should take half the time to solve the challenges and receive Tez. The actual time may vary depending on the user's computational resources.
+For example, assume with a `DIFFICULTY` of 4 and `CHALLENGE_SIZE` of 2048 the average time to find a solution is approximately 1.09 seconds when using the `getTez` script from the CLI or in a Node.js program, and approximately 4.6 seconds when solving challenges in the browser with the faucet frontend. Therefore, if `MAX_TEZ` is set to 6000 and `MAX_CHALLENGES` is set to 550, it would take a user about 10 minutes (600 seconds) to receive 6000 Tez when using the `getTez` script. With `MAX_CHALLENGES_WITH_CAPTCHA` set to 66, then when using CAPTCHA via the browser it should take about 5 minutes to solve the challenges and receive Tez. The actual time may vary a bit depending on the user's computational resources.
 
 ## Running the API
 
@@ -120,9 +126,3 @@ The endpoint verifies the solution by trying to regenerate it using the challeng
 If the solution is correct but the required number of challenges have not yet been satisfied, a new challenge is generated and returned in the response.
 
 If all challenges have been completed, the user's address is granted the requested amount of Tez. The transaction hash is returned to indicate the transfer was successful.
-
-## Programmatic Faucet Usage
-
-For programmatic usage of the faucet, we provide a `getTez.js` script located in the `/scripts` directory of the frontend repository. Please refer to it for more details on how to use it. This script can be run from a JavaScript program or directly from a shell. It interacts with the backend to request Tez, solve the required challenges, and verify the solutions.
-
-Please note that the `getTez.js` script does not use CAPTCHA. Therefore, when using the programmatic faucet, challenges can be configured to be more difficult and require more of them to be solved.

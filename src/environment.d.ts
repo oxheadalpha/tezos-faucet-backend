@@ -15,9 +15,9 @@ declare global {
       MAX_TEZ: string
       MIN_CHALLENGES: string
       MAX_CHALLENGES: string
+      MAX_CHALLENGES_WITH_CAPTCHA: string
       CHALLENGE_SIZE: string
       DIFFICULTY: string
-      CAPTCHA_CHALLENGES_REDUCTION_RATIO: string
     }
   }
 }

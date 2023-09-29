@@ -11,9 +11,9 @@ const {
   MAX_TEZ,
   MIN_CHALLENGES,
   MAX_CHALLENGES,
+  MAX_CHALLENGES_WITH_CAPTCHA,
   CHALLENGE_SIZE,
   DIFFICULTY,
-  CAPTCHA_CHALLENGES_REDUCTION_RATIO,
 } = process.env
 
 const env = {
@@ -23,53 +23,52 @@ const env = {
   MAX_BALANCE: MAX_BALANCE ? Number(MAX_BALANCE) : 6000,
   MIN_TEZ: MIN_TEZ ? Number(MIN_TEZ) : 1,
   MAX_TEZ: MAX_TEZ ? Number(MAX_TEZ) : 6000,
-  MIN_CHALLENGES: MIN_CHALLENGES ? Number(MIN_CHALLENGES) : 1,
-  MAX_CHALLENGES: MAX_CHALLENGES ? Number(MAX_CHALLENGES) : 550,
   CHALLENGE_SIZE: CHALLENGE_SIZE ? Number(CHALLENGE_SIZE) : 2048,
   DIFFICULTY: DIFFICULTY ? Number(DIFFICULTY) : 4,
-  CAPTCHA_CHALLENGES_REDUCTION_RATIO: CAPTCHA_CHALLENGES_REDUCTION_RATIO
-    ? Number(CAPTCHA_CHALLENGES_REDUCTION_RATIO)
-    : 0.88,
+  MIN_CHALLENGES: MIN_CHALLENGES ? Number(MIN_CHALLENGES) : 1,
+  MAX_CHALLENGES: MAX_CHALLENGES ? Number(MAX_CHALLENGES) : 550,
+  MAX_CHALLENGES_WITH_CAPTCHA: MAX_CHALLENGES_WITH_CAPTCHA
+    ? Number(MAX_CHALLENGES_WITH_CAPTCHA)
+    : 66,
 }
 
 const vars: (keyof typeof env)[] = [
-  "CAPTCHA_CHALLENGES_REDUCTION_RATIO",
-  "CHALLENGE_SIZE",
-  "DIFFICULTY",
   "MAX_BALANCE",
   "MAX_TEZ",
   "MIN_TEZ",
-  "MAX_CHALLENGES",
+  "CHALLENGE_SIZE",
+  "DIFFICULTY",
   "MIN_CHALLENGES",
+  "MAX_CHALLENGES",
+  "MAX_CHALLENGES_WITH_CAPTCHA",
 ]
 
 vars.forEach((v) => {
   const value: any = env[v]
   if (isNaN(value)) throw new Error(`Env var ${v} must be a number.`)
 
-  if (["CHALLENGE_SIZE", "DIFFICULTY"].includes(v)) {
-   if (value <= 0) {
-    throw new Error(`Env var ${v} must be greater than 0.`)
-   }
+  if (
+    [
+      "CHALLENGE_SIZE",
+      "DIFFICULTY",
+      "MIN_CHALLENGES",
+      "MAX_CHALLENGES",
+      "MAX_CHALLENGES_WITH_CAPTCHA",
+    ].includes(v)
+  ) {
+    if (value <= 0) {
+      throw new Error(`Env var ${v} must be greater than 0.`)
+    }
   }
 })
 
 if (
-  env.CAPTCHA_CHALLENGES_REDUCTION_RATIO < 0 ||
-  env.CAPTCHA_CHALLENGES_REDUCTION_RATIO >= 1
-) {
-  throw new Error(
-    "Env var CAPTCHA_CHALLENGES_REDUCTION_RATIO must be >= 0 and < 1."
-  )
-}
-
-if (
   env.MAX_CHALLENGES < env.MIN_CHALLENGES ||
-  env.MIN_CHALLENGES <= 0 ||
-  env.MAX_CHALLENGES <= 0
+  env.MAX_CHALLENGES_WITH_CAPTCHA < env.MIN_CHALLENGES
 ) {
   throw new Error(
-    "Env vars MAX_CHALLENGES and MIN_CHALLENGES must be greater than 0 and MAX_CHALLENGES must be greater than or equal to MIN_CHALLENGES."
+    `Env vars MAX_CHALLENGES and MAX_CHALLENGES_WITH_CAPTCHA must be
+  greater than or equal to MIN_CHALLENGES.`
   )
 }
 

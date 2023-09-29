@@ -12,21 +12,15 @@ const determineDifficulty = () => {
 }
 
 const determineChallengesNeeded = (amount: number, usedCaptcha: boolean) => {
-  const { MIN_TEZ, MAX_TEZ, MIN_CHALLENGES, MAX_CHALLENGES, } = env
+  const { MIN_TEZ, MAX_TEZ, MIN_CHALLENGES, MAX_CHALLENGES, MAX_CHALLENGES_WITH_CAPTCHA } = env
 
   // Calculate the proportion of the requested Tez to the maximum Tez
   const tezProportion = (amount - MIN_TEZ) / (MAX_TEZ - MIN_TEZ)
 
-  // Calculate the base number of challenges based on the Tez proportion
-  let baseChallenges = tezProportion * (MAX_CHALLENGES - MIN_CHALLENGES) + MIN_CHALLENGES
+  // Calculate the base number of challenges based on the Tez proportion and whether a captcha was used
+  const maxChallenges = usedCaptcha ? MAX_CHALLENGES_WITH_CAPTCHA : MAX_CHALLENGES
+  const challengesNeeded = Math.ceil(tezProportion * (maxChallenges - MIN_CHALLENGES) + MIN_CHALLENGES)
 
-  // If a captcha was used, reduce the number of challenges
-  if (usedCaptcha) {
-    baseChallenges *= (1 - env.CAPTCHA_CHALLENGES_REDUCTION_RATIO)
-  }
-
-  // Round the number of challenges to the nearest whole number
-  const challengesNeeded = Math.ceil(baseChallenges)
   return challengesNeeded
 }
 
