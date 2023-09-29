@@ -44,7 +44,7 @@ Optional:
 - `DIFFICULTY`: Difficulty level for challenges (default: `4`)
 - `CHALLENGE_SIZE`: How many bytes the challenge string should be (default: `2048`)
 - `MIN_CHALLENGES`: Minimum number of challenges required for the minimum Tez request (default: `1`)
-- `MAX_CHALLENGES`: Maximum number of challenges required for the maximum Tez request (default: `120`)
+- `MAX_CHALLENGES`: Maximum number of challenges required for the maximum Tez request (default: `550`)
 - `MAX_CHALLENGES_WITH_CAPTCHA`: Maximum number of challenges required for the maximum Tez request when a captcha is used (default: `66`)
 
 ### Configuring Challenges
