@@ -12,16 +12,26 @@ const determineDifficulty = () => {
 }
 
 const determineChallengesNeeded = (amount: number, usedCaptcha: boolean) => {
-  const { MIN_TEZ, MAX_TEZ, MIN_CHALLENGES, MAX_CHALLENGES, MAX_CHALLENGES_WITH_CAPTCHA } = env
+  const {
+    MIN_TEZ,
+    MAX_TEZ,
+    MIN_CHALLENGES,
+    MAX_CHALLENGES,
+    MAX_CHALLENGES_WITH_CAPTCHA,
+  } = env
 
   // Calculate the base number of challenges based on the Tez proportion and whether a captcha was used
-  const maxChallenges = usedCaptcha ? MAX_CHALLENGES_WITH_CAPTCHA : MAX_CHALLENGES
+  const maxChallenges = usedCaptcha
+    ? MAX_CHALLENGES_WITH_CAPTCHA
+    : MAX_CHALLENGES
 
   if (MIN_TEZ === MAX_TEZ) return maxChallenges
 
   // Calculate the proportion of the requested Tez to the maximum Tez
   const tezProportion = (amount - MIN_TEZ) / (MAX_TEZ - MIN_TEZ)
-  const challengesNeeded = Math.ceil(tezProportion * (maxChallenges - MIN_CHALLENGES) + MIN_CHALLENGES)
+  const challengesNeeded = Math.ceil(
+    tezProportion * (maxChallenges - MIN_CHALLENGES) + MIN_CHALLENGES
+  )
 
   return challengesNeeded
 }
@@ -50,6 +60,22 @@ type SaveChallengeArgs = Omit<ChallengeState, "usedCaptcha"> & {
   expiration?: number
 }
 
+const validateChallengeArgs = (challenge: SaveChallengeArgs) => {
+  const keys: (keyof SaveChallengeArgs)[] = [
+    "amount",
+    "challenge",
+    "challengeCounter",
+    "challengesNeeded",
+    "difficulty",
+  ]
+
+  for (const key of keys) {
+    if (!challenge[key]) {
+      throw new Error(`Challenge state is missing "${key}"`)
+    }
+  }
+}
+
 export const saveChallenge = async (
   challengeKey: string,
   {
@@ -58,6 +84,8 @@ export const saveChallenge = async (
     ...args
   }: SaveChallengeArgs
 ) => {
+  validateChallengeArgs(args)
+
   await redis.hSet(challengeKey, {
     ...args,
     ...(typeof usedCaptcha === "boolean" && {
