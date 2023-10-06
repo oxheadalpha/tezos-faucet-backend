@@ -68,8 +68,22 @@ export const sendTezAndRespond = async (
     return res
       .status(200)
       .send({ txHash, status: "SUCCESS", message: "Tez sent" })
-  } catch (err) {
-    console.error(`Error sending Tez to ${address}.`)
+  } catch (err: any) {
+    console.error(`Error sending Tez to ${address}.`, err)
+
+    const { message } = err
+
+    if (
+      message.includes("subtraction_underflow") ||
+      message.includes("storage_exhausted") ||
+      message.includes("empty_implicit_contract")
+    ) {
+      return res.status(500).send({
+        status: "ERROR",
+        message: "Faucet is low or has gone empty. Please contact the team.",
+      })
+    }
+
     throw err
   }
 }
