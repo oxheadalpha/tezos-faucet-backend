@@ -38,7 +38,7 @@ Optional:
 - `AUTHORIZED_HOST`: CORS origin whitelist (default `*`)
 - `DISABLE_CHALLENGES`: `true` to disable challenges (default: `false`)
 - `ENABLE_CAPTCHA`: `true` to enable ReCAPTCHA, `false` otherwise (default: `true`)
-- `MAX_BALANCE`: maximum address balance beyond which sending of XTZ is refused (default: `6000`)
+- `MAX_BALANCE`: maximum address balance beyond which sending of XTZ is refused (default: `null`)
 - `MIN_TEZ`: Minimum amount of Tez that can be requested (default: `1`)
 - `MAX_TEZ`: Maximum amount of Tez that can be requested (default: `6000`)
 - `DIFFICULTY`: Difficulty level for challenges (default: `4`)

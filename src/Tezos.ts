@@ -36,7 +36,7 @@ const sendTez = async (
   const userBalanceMutez = await Tezos.tz.getBalance(address)
   const userBalance = Number(format("mutez", "tz", userBalanceMutez).valueOf())
 
-  if (userBalance + amount > env.MAX_BALANCE) {
+  if (env.MAX_BALANCE !== null && userBalance + amount > env.MAX_BALANCE) {
     console.log(`${address} balance too high (${userBalance}). Not sending.`)
     return
   }
