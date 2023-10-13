@@ -77,13 +77,28 @@ const validateChallengeBody = (
   res: Response,
   next: NextFunction
 ) => {
-  const { solution, nonce } = req.body
+  if (!env.DISABLE_CHALLENGES) {
+    const { solution, nonce } = req.body
+    if (!solution || !nonce) {
+      return res.status(400).send({
+        status: "ERROR",
+        message: "'solution', and 'nonce', fields are required",
+      })
+    }
 
-  if (!env.DISABLE_CHALLENGES && (!solution || !nonce)) {
-    return res.status(400).send({
-      status: "ERROR",
-      message: "'solution', and 'nonce', fields are required",
-    })
+    if (!Number.isInteger(nonce)) {
+      return res.status(400).send({
+        status: "ERROR",
+        message: "'nonce' must be an integer",
+      })
+    }
+
+    if (typeof solution !== "string") {
+      return res.status(400).send({
+        status: "ERROR",
+        message: "'solution' must be a string",
+      })
+    }
   }
 
   next()
