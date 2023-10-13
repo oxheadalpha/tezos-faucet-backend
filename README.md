@@ -1,5 +1,21 @@
 # Tezos Faucet Backend
 
+## Index
+
+- [Overview](#overview)
+- [Programmatic Faucet Usage](#programmatic-faucet-usage)
+- [Prerequisites](#prerequisites)
+- [Config](#config)
+  - [Configuring Challenges](#configuring-challenges)
+- [Running the API](#running-the-api)
+- [Docker](#docker)
+  - [Build](#build)
+  - [Run](#run)
+- [API Endpoints](#api-endpoints)
+  - [GET /info](#get-info)
+  - [POST /challenge](#post-challenge)
+  - [POST /verify](#post-verify)
+
 ## Overview
 
 The Tezos Faucet Backend (frontend code [here](https://github.com/oxheadalpha/tezos-faucet)) provides a reliable and secure way to distribute Tez to users. Through the implementation of a Proof of Work (PoW) mechanism, combined with CAPTCHA, we ensure users expend computational resources, thereby preventing bots and malicious actors from spamming and draining the faucet.
@@ -95,6 +111,7 @@ docker run -p 3000:3000 tezos-faucet-backend
 ## API Endpoints
 
 #### Backend URL
+
 For faucets hosted on https://teztnets.xyz, their backend urls can be found at https://teztnets.xyz/teztnets.json under `faucet_url`.
 
 ### **GET `/info`**
@@ -190,4 +207,3 @@ Based on whether all required challenges are solved, the server either:
 ```
 
 **Note**: If `DISABLE_CHALLENGES` is `true`, `amount` should be sent in the request to the `/verify` endpoint, which will immediately grant Tez.
-
