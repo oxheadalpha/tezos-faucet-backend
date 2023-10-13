@@ -113,18 +113,68 @@ Example response:
 
 ### POST /challenge
 
-Initiates the Tez request procedure. The user provides their address, the amount of Tez they want, and captcha token (optional).
+Initiates the Tez request procedure. The user provides their address, the amount of Tez they want, and captcha token (optional). If `DISABLE_CHALLENGES` is `true`, only the `/verify` endpoint should be used.
+
+Request example:
+
+```json
+{
+  "address": "tz1...",
+  "amount": 10,
+  "captchaToken": "03AG..."
+}
+```
 
 If a challenge already exists for the user's address in Redis it will be returned in the response. Otherwise the endpoint generates a new challenge and stores it, along with associated data in Redis.
 
 The response contains the challenge string, a challenge counter starting at 1, and the difficulty. The challenge counter indicates the current challenge in a series of Proof of Work challenges that the user must complete.
 
+Response example:
+
+```json
+{
+  "challenge": "a3f7...",
+  "challengeCounter": 1,
+  "difficulty": 4
+}
+```
+
 ### POST /verify
 
 Allows users to submit solutions to the challenges. The user provides their address, nonce, and solution string.
+
+Request example:
+
+```json
+{
+  "address": "tz1...",
+  "nonce": "1234",
+  "solution": "0000ABC..."
+}
+```
 
 The endpoint verifies the solution by trying to regenerate it using the challenge string and nonce.
 
 If the solution is correct but the required number of challenges have not yet been satisfied, a new challenge is generated and returned in the response.
 
+Response example:
+
+```json
+{
+  "challenge": "b4u92...",
+  "challengeCounter": 2,
+  "difficulty": 4
+}
+```
+
 If all challenges have been completed, the user's address is granted the requested amount of Tez. The transaction hash is returned to indicate the transfer was successful.
+
+Response example:
+
+```json
+{
+  "txHash": "oo7X..."
+}
+```
+
+Note: If `DISABLE_CHALLENGES` is `true`, `amount` should be sent in the request to the `/verify` endpoint, which will immediately grant Tez.
