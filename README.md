@@ -94,11 +94,12 @@ docker run -p 3000:3000 tezos-faucet-backend
 
 ## API Endpoints
 
-### GET /info
+#### Backend URL
+For faucets hosted on https://teztnets.xyz, their backend urls can be found at https://teztnets.xyz/teztnets.json under `faucet_url`.
 
-Returns general information about the faucet, including the faucet's address, whether captcha is enabled, the max balance allowed, and the min and max Tez amounts.
+### **GET `/info`**
 
-Example response:
+Returns details like the faucet's address, whether captcha and challenges are enabled, the maximum balance allowed, and the min and max Tez request amounts.
 
 ```json
 {
@@ -111,25 +112,21 @@ Example response:
 }
 ```
 
-### POST /challenge
+### **POST `/challenge`**
 
-Initiates the Tez request procedure. The user provides their address, the amount of Tez they want, and captcha token (optional). If `DISABLE_CHALLENGES` is `true`, only the `/verify` endpoint should be used.
+Initiate the Tez request procedure.
 
-Request example:
+**Request**:
 
 ```json
 {
   "address": "tz1...",
-  "amount": 10,
-  "captchaToken": "03AG..."
+  "amount": 10
 }
 ```
 
-If a challenge already exists for the user's address in Redis it will be returned in the response. Otherwise the endpoint generates a new challenge and stores it, along with associated data in Redis.
-
-The response contains the challenge string, a challenge counter starting at 1, and the difficulty. The challenge counter indicates the current challenge in a series of Proof of Work challenges that the user must complete.
-
-Response example:
+**Response**:
+The server provides a challenge string, challenge counter, and difficulty.
 
 ```json
 {
@@ -139,25 +136,44 @@ Response example:
 }
 ```
 
-### POST /verify
+If a challenge already exists for the user's address in Redis, it will be returned in the response. Otherwise the endpoint generates a new challenge and stores it in Redis.
 
-Allows users to submit solutions to the challenges. The user provides their address, nonce, and solution string.
+The challenge counter indicates the current challenge number in a series of Proof of Work challenges that the user must complete.
 
-Request example:
+**Solving the Challenge**:
+You need to find a nonce such that the SHA-256 hash of the concatenated string (challenge + nonce) begins with a number of zeros equivalent to the given `difficulty`. For instance, if the difficulty is 4, then the hash should start with four leading zeros, e.g., `0000abcd1234...`. The nonce is an arbitrary number that is iteratively increased until the condition is met.
+
+**Pseudocode**:
+
+```pseudocode
+nonce = 0
+do {
+    combined_string = challenge_string + nonce
+    hash_result = sha256(combined_string)
+    nonce++
+} while (hash_result does not start with `difficulty` number of zero bytes)
+```
+
+### **POST `/verify`**
+
+Submit challenge solutions and receive Tez.
+
+**Request**:
 
 ```json
 {
   "address": "tz1...",
-  "nonce": "1234",
-  "solution": "0000ABC..."
+  "nonce": 123456, // found from above pseudocode
+  "solution": "0000ABC..." // hash_result from above pseudocode
 }
 ```
 
 The endpoint verifies the solution by trying to regenerate it using the challenge string and nonce.
 
-If the solution is correct but the required number of challenges have not yet been satisfied, a new challenge is generated and returned in the response.
+**Response**:
+Based on whether all required challenges are solved, the server either:
 
-Response example:
+- Sends another challenge:
 
 ```json
 {
@@ -167,14 +183,11 @@ Response example:
 }
 ```
 
-If all challenges have been completed, the user's address is granted the requested amount of Tez. The transaction hash is returned to indicate the transfer was successful.
-
-Response example:
+- Grants the requested Tez amount and returns a transaction hash.
 
 ```json
-{
-  "txHash": "oo7X..."
-}
+{ "txHash": "oo7X..." }
 ```
 
-Note: If `DISABLE_CHALLENGES` is `true`, `amount` should be sent in the request to the `/verify` endpoint, which will immediately grant Tez.
+**Note**: If `DISABLE_CHALLENGES` is `true`, `amount` should be sent in the request to the `/verify` endpoint, which will immediately grant Tez.
+
