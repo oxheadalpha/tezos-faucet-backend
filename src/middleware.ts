@@ -8,6 +8,8 @@ export const cors = (_: Request, res: Response, next: NextFunction) => {
   res
     .setHeader("Access-Control-Allow-Origin", host)
     .setHeader("Access-Control-Allow-Methods", "GET, POST")
+    // Clients should cache CORS policy for 1 day
+    .setHeader("Access-Control-Max-Age", 86400)
     .setHeader(
       "Access-Control-Allow-Headers",
       "Origin, X-Requested-With, Content-Type, Accept"
