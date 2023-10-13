@@ -13,7 +13,7 @@ export type InfoResponseBody = {
   faucetAddress: string
   captchaEnabled: boolean
   challengesEnabled: boolean
-  maxBalance: number
+  maxBalance: number | null
   minTez: number,
   maxTez: number
 }
