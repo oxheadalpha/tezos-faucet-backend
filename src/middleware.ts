@@ -79,6 +79,7 @@ const validateChallengeBody = (
 ) => {
   if (!env.DISABLE_CHALLENGES) {
     const { solution, nonce } = req.body
+
     if (!solution || !nonce) {
       return res.status(400).send({
         status: "ERROR",
@@ -86,7 +87,7 @@ const validateChallengeBody = (
       })
     }
 
-    if (!Number.isInteger(nonce)) {
+    if (!Number.isInteger(Number(nonce))) {
       return res.status(400).send({
         status: "ERROR",
         message: "'nonce' must be an integer",

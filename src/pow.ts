@@ -112,13 +112,13 @@ export const getChallenge = async (
   } satisfies ChallengeState as ChallengeState
 }
 
-const getSolution = (challenge: string, nonce: number) =>
+const getSolution = (challenge: string, nonce: number | string) =>
   createHash("sha256").update(`${challenge}:${nonce}`).digest("hex")
 
 interface VerifySolutionArgs {
   challenge: string
   difficulty: number
-  nonce: number
+  nonce: number | string
   solution: string
 }
 export const verifySolution = ({
